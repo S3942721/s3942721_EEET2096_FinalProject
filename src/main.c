@@ -12,6 +12,25 @@
 #include "boardSupport.h"
 #include "main.h"
 
+/*
+	Methids/Functions/Subroutines we need:
+	Config methods
+		- RCC
+		- GPIO
+		- Timer
+			- 1 Hz UART timer
+			- Possibly more?
+		- U(S)ART
+		- ADC
+	Transmit UART
+		- 7 body characters
+	Listen for UART
+		- 2 body character
+	Check GPIO input (switches)
+	Update GPIO output (LEDs)
+		- ensure only one of Cooling or Heating are active, never both
+*/
+
 
 //******************************************************************************//
 // Function: main()
