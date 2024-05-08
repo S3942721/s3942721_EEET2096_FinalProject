@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2024-05-08T01:36:47.064Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="sf90XIVTtN6HX3LSVkm9" version="21.6.8" type="device">
+<mxfile host="Electron" modified="2024-05-08T01:37:55.780Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="zrMXgmq51L8nSc2at0P0" version="21.6.8" type="device">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
     <mxGraphModel dx="2205" dy="2122" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -59,7 +59,7 @@
         <mxCell id="2rXGyk0SuymWQeA6SV-Z-6" value="Light Switch&lt;br&gt;(On/Off)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="-80" y="-870" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="2rXGyk0SuymWQeA6SV-Z-7" value="Light Intensity &lt;br&gt;Sensor (Potentiometer)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
+        <mxCell id="2rXGyk0SuymWQeA6SV-Z-7" value="Light Intensity &lt;br&gt;Sensor" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
           <mxGeometry x="-80" y="-760" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="2rXGyk0SuymWQeA6SV-Z-8" value="Heater Output" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
