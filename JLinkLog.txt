@@ -1,0 +1,177 @@
+T4428 000:148.965   SEGGER J-Link V7.84d Log File
+T4428 000:149.101   DLL Compiled: Jan 25 2023 15:51:00
+T4428 000:149.107   Logging started @ 2023-01-31 02:21
+T4428 000:149.113 - 149.116ms
+T4428 000:149.125 JLINK_SetWarnOutHandler(...)
+T4428 000:149.132 - 0.010ms
+T4428 000:149.140 JLINK_OpenEx(...)
+T4428 000:152.053   Firmware: J-Link OB-STM32F103 V1 compiled Aug 22 2022 11:54:29
+T4428 000:152.841   Firmware: J-Link OB-STM32F103 V1 compiled Aug 22 2022 11:54:29
+T4428 000:175.386   Hardware: V1.00
+T4428 000:175.405   S/N: 660016067
+T4428 000:175.413   OEM: SEGGER
+T4428 000:175.421   Feature(s): None
+T4428 000:178.212   USB speed mode: Full speed (12 MBit/s)
+T4428 000:178.877   TELNET listener socket opened on port 19021
+T4428 000:179.032   WEBSRV WEBSRV_Init(): Starting webserver thread(s)
+T4428 000:179.194   WEBSRV Webserver running on local port 19080
+T4428 000:195.575 - 46.448ms returns "O.K."
+T4428 000:195.616 JLINK_GetEmuCaps()
+T4428 000:195.623 - 0.009ms returns 0x98EA5A33
+T4428 000:195.632 JLINK_TIF_GetAvailable(...)
+T4428 000:196.019 - 0.392ms
+T4428 000:196.032 JLINK_SetErrorOutHandler(...)
+T4428 000:196.038 - 0.008ms
+T4428 000:196.065 JLINK_ExecCommand("ProjectFile = "C:\Temp\STM32F439_Template_v6\JLinkSettings.ini"", ...). 
+T4428 000:210.973   Ref file found at: C:\Keil_v5\ARM\Segger\JLinkDevices.ref
+T4428 000:211.063   REF file references invalid XML file: C:\Program Files\SEGGER\JLink\JLinkDevices.xml
+T4428 000:211.205 - 15.145ms returns 0x00
+T4428 000:211.224 JLINK_ExecCommand("Device = STM32F439IITx", ...). 
+T4428 000:211.471   Looking for J-Link GUI Server exe at: C:\Keil_v5\ARM\Segger\JLinkGUIServer.exe
+T4428 000:211.567   Looking for J-Link GUI Server exe at: C:\Program Files\SEGGER\JLink\JLinkGUIServer.exe
+T4428 000:211.599   Forking J-Link GUI Server: C:\Program Files\SEGGER\JLink\JLinkGUIServer.exe
+T4428 000:233.414   J-Link GUI Server info: "J-Link GUI server V7.84d "
+T4428 003:884.344   The connected J-Link (S/N 660016067) has been designed to work with devices made by Vorago only.
+Debugging the selected device STM32F439II is not supported by this J-Link.
+
+To program and debug the target device, please consider purchasing a full J-Link.
+More information: https://www.segger.com/jlink-debug-probes.html
+T4428 003:884.862   Flash bank @ 0x90000000: SFL: Parsing sectorization info from ELF file
+T4428 003:884.875     FlashDevice.SectorInfo[0]: .SectorSize = 0x00010000, .SectorStartAddr = 0x00000000
+T4428 003:884.885   OFL: Init() present @ offset 0x00000649
+T4428 003:884.893   OFL: UnInit() present @ offset 0x00000663
+T4428 003:884.901   OFL: EraseSector() present @ offset 0x00000671
+T4428 003:884.910   OFL: ProgramPage() present @ offset 0x000006E9
+T4428 003:884.918   OFL: EraseChip() N/A
+T4428 003:884.926   OFL: BlankCheck() N/A
+T4428 003:884.934   OFL: Verify() N/A
+T4428 003:884.942   OFL: SEGGER_FL_Erase() N/A
+T4428 003:884.951   OFL: SEGGER_OPEN_Erase() N/A
+T4428 003:884.959   OFL: SEGGER_FL_Program() N/A
+T4428 003:884.967   OFL: SEGGER_OPEN_Program() N/A
+T4428 003:884.975   OFL: SEGGER_FL_Read() N/A
+T4428 003:884.983   OFL: SEGGER_OPEN_Read() N/A
+T4428 003:884.991   OFL: SEGGER_FL_CalcCRC() N/A
+T4428 003:884.999   OFL: SEGGER_OPEN_CalcCRC() N/A
+T4428 003:885.007   OFL: SEGGER_FL_Start() N/A
+T4428 003:885.016   OFL: SEGGER_OPEN_Start() N/A
+T4428 003:885.024   OFL: SEGGER_FL_GetFlashInfo() N/A
+T4428 003:885.032   OFL: SEGGER_OPEN_GetFlashInfo() N/A
+T4428 003:885.040   OFL: SEGGER_FL_Verify() N/A
+T4428 003:885.048   OFL: SEGGER_FL_CheckBlank() N/A
+T4428 003:885.057   OFL: SEGGER_FL_Prepare() N/A
+T4428 003:885.065   OFL: SEGGER_FL_Restore() N/A
+T4428 003:885.073   OFL: SEGGER_FL_EraseChip() N/A
+T4428 003:886.073   Device "STM32F439II" selected.
+T4428 003:886.366 - 3675.145ms returns 0x00
+T4428 003:886.400 JLINK_ExecCommand("DisableConnectionTimeout", ...). 
+T4428 003:886.422 - 0.007ms returns 0x01
+T4428 003:886.434 JLINK_GetHardwareVersion()
+T4428 003:886.440 - 0.009ms returns 10000
+T4428 003:886.453 JLINK_GetDLLVersion()
+T4428 003:886.465 - 0.015ms returns 78404
+T4428 003:886.510 JLINK_GetOEMString(...)
+T4428 003:886.521 JLINK_GetFirmwareString(...)
+T4428 003:886.527 - 0.009ms
+T4428 003:887.591 JLINK_GetDLLVersion()
+T4428 003:887.608 - 0.020ms returns 78404
+T4428 003:887.618 JLINK_GetCompileDateTime()
+T4428 003:887.624 - 0.008ms
+T4428 003:888.228 JLINK_GetFirmwareString(...)
+T4428 003:888.243 - 0.018ms
+T4428 003:888.258 JLINK_GetHardwareVersion()
+T4428 003:888.270 - 0.019ms returns 10000
+T4428 003:888.284 JLINK_GetSN()
+T4428 003:888.291 - 0.009ms returns 660016067
+T4428 003:888.299 JLINK_GetOEMString(...)
+T4428 003:888.309 JLINK_TIF_Select(JLINKARM_TIF_JTAG)
+T4428 003:891.945 - 3.648ms returns 0x00
+T4428 003:891.966 JLINK_HasError()
+T4428 003:891.996 JLINK_SetSpeed(5000)
+T4428 003:892.467 - 0.481ms
+T4428 003:892.756 JLINK_HasError()
+T4428 003:892.772 JLINK_SetResetType(JLINKARM_RESET_TYPE_NORMAL)
+T4428 003:892.780 - 0.010ms returns JLINKARM_RESET_TYPE_NORMAL
+T4428 003:892.788 JLINK_Reset()
+T4428 003:893.468   InitTarget() start
+T4428 003:893.492    J-Link Script File: Executing InitTarget()
+T4428 003:893.994   JTAG selected. Identifying JTAG Chain...
+T4428 003:896.422   TotalIRLen = ?, IRPrint = 0x..000000000000000000000001
+T4428 003:897.174   Error: Scanning JTAG chain failed.
+T4428 003:897.188   Can not attach to CPU. Trying connect under reset.
+T4428 003:948.641   JTAG selected. Identifying JTAG Chain...
+T4428 003:950.629   Could not measure total IR len. TDO is constant high.
+T4428 003:951.218   Error: Scanning JTAG chain failed.
+T4428 003:951.233   Connecting to CPU via connect under reset failed.
+T4428 004:001.523   InitTarget() end
+T4428 004:001.561   Connect failed. Resetting via Reset pin and trying again.
+T4428 004:063.706   InitTarget() start
+T4428 004:063.729    J-Link Script File: Executing InitTarget()
+T4428 004:064.363   JTAG selected. Identifying JTAG Chain...
+T4428 004:066.379   Could not measure total IR len. TDO is constant high.
+T4428 004:067.343   Error: Scanning JTAG chain failed.
+T4428 004:067.357   Can not attach to CPU. Trying connect under reset.
+T4428 004:118.856   JTAG selected. Identifying JTAG Chain...
+T4428 004:121.424   Could not measure total IR len. TDO is constant high.
+T4428 004:122.263   Error: Scanning JTAG chain failed.
+T4428 004:122.277   Connecting to CPU via connect under reset failed.
+T4428 004:173.926   InitTarget() end
+T4428 004:173.948 - 281.163ms
+T4428 004:173.962 JLINK_GetIdData(pIdData)
+T4428 004:174.492   InitTarget() start
+T4428 004:174.505    J-Link Script File: Executing InitTarget()
+T4428 004:175.071   JTAG selected. Identifying JTAG Chain...
+T4428 004:177.072   TotalIRLen = ?, IRPrint = 0x..000000000000000000000001
+T4428 004:177.946   Error: Scanning JTAG chain failed.
+T4428 004:177.960   Can not attach to CPU. Trying connect under reset.
+T4428 004:229.999   JTAG selected. Identifying JTAG Chain...
+T4428 004:232.213   Could not measure total IR len. TDO is constant high.
+T4428 004:232.943   Error: Scanning JTAG chain failed.
+T4428 004:232.957   Connecting to CPU via connect under reset failed.
+T4428 004:283.917   InitTarget() end
+T4428 004:283.936   Connect failed. Resetting via Reset pin and trying again.
+T4428 004:346.878   InitTarget() start
+T4428 004:346.899    J-Link Script File: Executing InitTarget()
+T4428 004:347.569   JTAG selected. Identifying JTAG Chain...
+T4428 004:349.628   Could not measure total IR len. TDO is constant high.
+T4428 004:350.359   Error: Scanning JTAG chain failed.
+T4428 004:350.373   Can not attach to CPU. Trying connect under reset.
+T4428 004:401.884   JTAG selected. Identifying JTAG Chain...
+T4428 004:404.144   Could not measure total IR len. TDO is constant high.
+T4428 004:404.844   Error: Scanning JTAG chain failed.
+T4428 004:404.857   Connecting to CPU via connect under reset failed.
+T4428 004:455.903   InitTarget() end
+T4428 004:455.919 - 281.960ms
+T4428 004:455.933 JLINK_GetIdData(pIdData)
+T4428 004:456.759   InitTarget() start
+T4428 004:456.771    J-Link Script File: Executing InitTarget()
+T4428 004:457.580   JTAG selected. Identifying JTAG Chain...
+T4428 004:459.642   TotalIRLen = ?, IRPrint = 0x..000000000000000000000001
+T4428 004:460.583   Error: Scanning JTAG chain failed.
+T4428 004:460.597   Can not attach to CPU. Trying connect under reset.
+T4428 004:511.940   JTAG selected. Identifying JTAG Chain...
+T4428 004:513.984   Could not measure total IR len. TDO is constant high.
+T4428 004:514.754   Error: Scanning JTAG chain failed.
+T4428 004:514.768   Connecting to CPU via connect under reset failed.
+T4428 004:565.910   InitTarget() end
+T4428 004:565.935   Connect failed. Resetting via Reset pin and trying again.
+T4428 004:628.039   InitTarget() start
+T4428 004:628.058    J-Link Script File: Executing InitTarget()
+T4428 004:628.562   JTAG selected. Identifying JTAG Chain...
+T4428 004:630.624   Could not measure total IR len. TDO is constant high.
+T4428 004:631.354   Error: Scanning JTAG chain failed.
+T4428 004:631.368   Can not attach to CPU. Trying connect under reset.
+T4428 004:683.050   JTAG selected. Identifying JTAG Chain...
+T4428 004:685.474   Could not measure total IR len. TDO is constant high.
+T4428 004:686.278   Error: Scanning JTAG chain failed.
+T4428 004:686.293   Connecting to CPU via connect under reset failed.
+T4428 004:736.897   InitTarget() end
+T4428 004:736.917 - 280.987ms
+T4428 004:740.409 JLINK_GetFirmwareString(...)
+T4428 004:740.421 - 0.014ms
+T43F0 014:435.014     JLINK_RTTERMINAL_Control(Cmd = JLINKARM_RTTERMINAL_CMD_STOP)
+T43F0 014:435.029     - 0.018ms returns 0x01
+T4428 047:075.507 JLINK_Close()
+T4428 047:104.446 - 28.957ms
+T4428 047:104.468   
+T4428 047:104.474   Closed
