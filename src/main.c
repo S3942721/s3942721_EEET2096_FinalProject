@@ -1,8 +1,10 @@
 
 /********************************************
-*			STM32F439 Main (C Startup File)  			*
+*			STM32F439 Main								  			*
 *			Developed for the STM32								*
-*			Author: Dr. Glenn Matthews						*
+*			Startup Author: Dr. Glenn Matthews		*
+*			Project Authors: Samuel Griffiths 		*
+* 										 Cameron Lindsay			*
 *			Source File														*
 ********************************************/
 
