@@ -138,6 +138,7 @@
 */
 
 // Method prototypes
+// Configuration methods
 void configure_RCC(void);
 void configure_GPIOs(void);
 void configure_GPIOA(void);
@@ -148,10 +149,14 @@ void configure_TIM6(void);
 void configure_TIM7(void);
 void configure_USART3(void);
 void configure_ADC(void);
-void transmit_UART(void);
-void receive_UART(void);
-void check_GPIO_input(void);
-void update_GPIO_output(void);
+
+// UART Communication methods
+void transmit_UART(uint8_t data);
+void transmit_Status_Packet(void);
+uint8_t receive_UART(void);
+void receive_Status_Packet(void);
+
+// Device Control methods
 void turn_on_cooling(void);
 void turn_off_cooling(void);
 void turn_on_heating(void);
@@ -160,11 +165,15 @@ void turn_on_fan(void);
 void turn_off_fan(void);
 void turn_on_light(void);
 void turn_off_light(void);
+
+// Sensor Readings methods
 float get_temperature(void);
 int get_ADC_temperature(void);
 bool get_light_intensity(void);
 bool get_fan_switch(void);
 bool get_light_switch(void);
+
+// Timer Operations methods
 void start_TIM6(uint16_t count);
 void start_TIM7(uint16_t count);
 void wait_For_TIM6(void);
@@ -184,12 +193,68 @@ int main(void)
 {
 	// Bring up the GPIO for the power regulators.
 	boardSupport_init();
+
+  configure_RCC();
+  configure_GPIOs();
 	
+  // Program State Variables
+  bool cooling_output = false;
+  bool heating_output = false;
+  bool fan_output = false;
+  bool light_output = false;
+
+  bool cooling_input = false;
+  bool heating_input = false;
+  bool fan_input = false;
+  bool light_input = false;
+
+  bool light_intensity_sensor = false;
+  bool fan_switch = false;
+  bool light_switch = false;
+  float temperature_input = 0.0;
+  int adc_temperature = 0;
+
+  u8int_t status_frame = 0x00;  // A valid status frame will never be 0x00
+                                // it will have 0b0011 in the first 4 bits therefore 0x3n is a valid frame where n is the status bits
+
   while (1)
   {
-	
+    // If 1Hz timer has expired then transmit data
+    if (TIM6->SR & TIM_SR_UIF == 0x01)
+    {
+      transmit_Status_Packet();
+    }
+
+    // If character is received on UART then recieve and process status packet
+    if (USART3->SR & USART_SR_RXNE == 0x01)
+    {
+      status_frame = receive_Status_Packet();
+
+      // Check if status frame is valid (First 4 bits are 0b0011)
+      if ((status_frame & 0xF0) == 0x30)
+      {
+        // Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
+        cooling_input = status_frame & 0x10; // Clear all but 4th bit
+        heating_input = status_frame & 0x20; // Clear all but 5th bit
+        fan_input = status_frame & 0x40; // Clear all but 6th bit
+        light_input = status_frame & 0x80; // Clear all but 7th bit
+      }
+    }
+
+    // Read Switches
+    light_switch = get_light_switch();
+    fan_switch = get_fan_switch();
+
+    // Handle inputs
+    cooling_output = handle_cooling();
+    heating_output = handle_heating();
+    fan_output = handle_fan();
+    light_output = handle_light();
+
+    // Update GPIO Outputs
+    handle_otuputs();
   }
-} 
+}
 
 void configure_USART3(void)
 {
@@ -295,6 +360,38 @@ void configure_RCC(void)
   // Enable GPIOA, GPIOB, GPIOF, TIM6, TIM7, USART3, ADC1, ADC2, ADC3
   RCC->AHB1ENR |= (RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN);
   RCC->APB1ENR |= (RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN | RCC_APB1ENR_ADC1EN | RCC_APB1ENR_ADC2EN | RCC_APB1ENR_ADC3EN);
+}
+
+void handle_outputs(void)
+{
+  if (cooling_output)
+  {
+    turn_on_cooling();
+  } else {
+    turn_off_cooling();
+  }
+
+  if (heating_output)
+  {
+    turn_on_heating();
+  } else {
+    turn_off_heating();
+  }
+
+  if (fan_output)
+  {
+    turn_on_fan();
+  } else {
+    turn_off_fan();
+  }
+
+  if (light_output)
+  {
+    turn_on_light();
+  } else {
+    turn_off_light();
+  }
+
 }
 
 /*
