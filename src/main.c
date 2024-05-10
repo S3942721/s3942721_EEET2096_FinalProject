@@ -157,14 +157,10 @@ uint8_t receive_UART(void);
 void receive_Status_Packet(void);
 
 // Device Control methods
-void turn_on_cooling(void);
-void turn_off_cooling(void);
-void turn_on_heating(void);
-void turn_off_heating(void);
-void turn_on_fan(void);
-void turn_off_fan(void);
-void turn_on_light(void);
-void turn_off_light(void);
+void set_cooling(bool on);
+void set_heating(bool on);
+void set_fan(bool on);
+void set_light(bool on);
 
 // Sensor Readings methods
 float get_temperature(void);
@@ -366,32 +362,96 @@ void handle_outputs(void)
 {
   if (cooling_output)
   {
-    turn_on_cooling();
-  } else {
-    turn_off_cooling();
+    set_cooling(true);
+  } 
+  else 
+  {
+    set_cooling(false);
   }
-
+  
   if (heating_output)
   {
-    turn_on_heating();
-  } else {
-    turn_off_heating();
+    set_heating(true);
+  } 
+  else 
+  {
+    set_heating(false);
   }
-
+  
   if (fan_output)
   {
-    turn_on_fan();
-  } else {
-    turn_off_fan();
+    set_fan(true);
+  } 
+  else 
+  {
+    set_fan(false);
   }
-
+  
   if (light_output)
   {
-    turn_on_light();
-  } else {
-    turn_off_light();
+    set_light(true);
+  } 
+  else 
+  {
+    set_light(false);
   }
+}
 
+// Device Control methods
+void set_cooling(bool on)
+{
+  // Cooling is on PF8
+  if (on)
+  {
+    GPIOF->ODR |= GPIO_ODR_OD8;
+  } 
+  // Cooling is off
+  else 
+  {
+    GPIOF->ODR &= ~GPIO_ODR_OD8;
+  }
+}
+
+void set_heating(bool on)
+{
+  // Heater is on PB8
+  if (on)
+  {
+    GPIOB->ODR |= GPIO_ODR_OD8;
+  } 
+  // Heater is off
+  else 
+  {
+    GPIOB->ODR &= ~GPIO_ODR_OD8;
+  }
+}
+
+void set_fan(bool on)
+{
+  // Fan is on PB1
+  if (on)
+  {
+    GPIOA->ODR |= GPIO_ODR_OD8;
+  } 
+  // Fan is off
+  else 
+  {
+    GPIOA->ODR &= ~GPIO_ODR_OD8;
+  }
+}
+
+void set_light(bool on)
+{
+  // Light is on PA3
+  if (on)
+  {
+    GPIOA->ODR |= GPIO_ODR_OD3;
+  } 
+  // Light is off
+  else 
+  {
+    GPIOA->ODR &= ~GPIO_ODR_OD3;
+  }
 }
 
 /*
