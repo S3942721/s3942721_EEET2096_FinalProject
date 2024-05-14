@@ -9,6 +9,7 @@
 ********************************************/
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "boardSupport.h"
 #include "main.h"
 
@@ -177,7 +178,24 @@ void wait_For_TIM7(void);
 void stop_TIM6(void);
 void stop_TIM7(void);
 
+void handle_outputs(void);
 
+
+	bool cooling_output;
+  bool heating_output;
+  bool fan_output;
+  bool light_output;
+	
+  bool cooling_input;
+  bool heating_input;
+  bool fan_input;
+  bool light_input;
+
+  bool light_intensity_sensor;
+  bool fan_switch;
+  bool light_switch;
+  float temperature_input;
+  int adc_temperature;
 
 //******************************************************************************//
 // Function: main()
@@ -194,15 +212,15 @@ int main(void)
   configure_GPIOs();
 	
   // Program State Variables
-  bool cooling_output = false;
-  bool heating_output = false;
-  bool fan_output = false;
-  bool light_output = false;
+  cooling_output = false;
+  heating_output = false;
+  fan_output = false;
+  light_output = false;
 
-  bool cooling_input = false;
-  bool heating_input = false;
-  bool fan_input = false;
-  bool light_input = false;
+  cooling_input = false;
+  heating_input = false;
+  fan_input = false;
+  light_input = false;
 
   bool light_intensity_sensor = false;
   bool fan_switch = false;
@@ -210,7 +228,7 @@ int main(void)
   float temperature_input = 0.0;
   int adc_temperature = 0;
 
-  u8int_t status_frame = 0x00;  // A valid status frame will never be 0x00
+  uint8_t status_frame = 0x00;  // A valid status frame will never be 0x00
                                 // it will have 0b0011 in the first 4 bits therefore 0x3n is a valid frame where n is the status bits
 
   while (1)
@@ -222,7 +240,7 @@ int main(void)
     }
 
     // If character is received on UART then recieve and process status packet
-    if (USART3->SR & USART_SR_RXNE == 0x01)
+    if ((USART3->SR & USART_SR_RXNE) == 0x01)
     {
       status_frame = receive_Status_Packet();
 
@@ -353,9 +371,7 @@ void configure_TIM7(void)
 
 void configure_RCC(void)
 {
-  // Enable GPIOA, GPIOB, GPIOF, TIM6, TIM7, USART3, ADC1, ADC2, ADC3
-  RCC->AHB1ENR |= (RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN);
-  RCC->APB1ENR |= (RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN | RCC_APB1ENR_ADC1EN | RCC_APB1ENR_ADC2EN | RCC_APB1ENR_ADC3EN);
+
 }
 
 void handle_outputs(void)
