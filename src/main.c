@@ -873,17 +873,29 @@ void stop_TIM7(void)
 
 bool handle_cooling(void)
 {
-    return false; // TODO: Implement this
+		if (cooling_input){
+			return !cooling_output;
+		} else {
+			return cooling_output;
+		}
 }
 
 bool handle_heating(void)
 {
-    return false;
+    if (heating_input){
+			return !heating_output;
+		} else {
+			return heating_output;
+		}
 }
 
 bool handle_fan(void)
 {
-    return false;
+    if (fan_input){
+			return !fan_output;
+		} else {
+			return fan_output;
+		}
 }
 
 bool handle_light(void)
