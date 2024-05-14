@@ -754,13 +754,12 @@ bool get_light_intensity(void) //Cam
 	switch(PA10)
 	{
 		case 0x00:
-			return false;
-		case (0x01 << GPIO_IDR_ID10_Pos):
 			return true;
+		case (0x01 << GPIO_IDR_ID10_Pos):
+			return false;
 		default:
 			return false;
 	}
-  return false; // TODO: Implement this
 }
 
 /**
@@ -768,9 +767,19 @@ bool get_light_intensity(void) //Cam
  * 
  * @return The fan switch state.
  */
-bool get_fan_switch(void)
+bool get_fan_switch(void) //Cam
 {
-  return false; // TODO: Implement this
+  uint32_t PB1 = GPIOB->IDR & GPIO_IDR_ID1_Msk;
+	
+	switch(PB1)
+	{
+		case 0x00:
+			return true;
+		case (0x01 << GPIO_IDR_ID1_Pos):
+			return false;
+		default:
+			return false;
+	}
 }
 
 /**
@@ -780,7 +789,17 @@ bool get_fan_switch(void)
  */
 bool get_light_switch(void)
 {
-  return false; // TODO: Implement this
+  uint32_t PA9 = GPIOA->IDR & GPIO_IDR_ID9_Msk;
+	
+	switch(PA9)
+	{
+		case 0x00:
+			return true;
+		case (0x01 << GPIO_IDR_ID9_Pos):
+			return false;
+		default:
+			return false;
+	}
 }
 
 /**
