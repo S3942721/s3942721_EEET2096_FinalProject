@@ -178,31 +178,46 @@ void wait_For_TIM7(void);
 void stop_TIM6(void);
 void stop_TIM7(void);
 
+// Handle inputs and outputs methods
+bool handle_cooling(void);
+bool handle_heating(void);
+bool handle_fan(void);
+bool handle_light(void);
 void handle_outputs(void);
 
+// Helper methods
+uint16_t count_from_rate_TIM6(float rate);
+uint16_t count_from_delay_ms_TIM7(int delay_ms);
 
-	bool cooling_output;
-  bool heating_output;
-  bool fan_output;
-  bool light_output;
-	
-  bool cooling_input;
-  bool heating_input;
-  bool fan_input;
-  bool light_input;
+// Global Variables
+bool cooling_output;
+bool heating_output;
+bool fan_output;
+bool light_output;
 
-  bool light_intensity_sensor;
-  bool fan_switch;
-  bool light_switch;
-  float temperature_input;
-  int adc_temperature;
+bool cooling_input;
+bool heating_input;
+bool fan_input;
+bool light_input;
 
-//******************************************************************************//
-// Function: main()
-// Input : None
-// Return : None
-// Description : Entry point into the application.
-// *****************************************************************************//
+bool light_intensity_sensor;
+bool fan_switch;
+bool light_switch;
+float temperature_input;
+int adc_temperature;
+
+int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
+
+
+/**
+ * @brief Main function of the program.
+ * 
+ * This function initializes the GPIO for the power regulators, configures RCC and GPIOs,
+ * and then enters an infinite loop where it continuously reads inputs, handles them, and updates GPIO outputs.
+ * It also periodically transmits status packets and receives and processes status packets over UART.
+ * 
+ * @return int The exit status of the program.
+ */
 int main(void)
 {
 	// Bring up the GPIO for the power regulators.
@@ -211,12 +226,14 @@ int main(void)
   configure_RCC();
   configure_GPIOs();
 	
-  // Program State Variables
+  // Initialise Program State Variables
+  // Output is used to control the GPIO outputs
   cooling_output = false;
   heating_output = false;
   fan_output = false;
   light_output = false;
 
+  // Input is used to control the program inputs
   cooling_input = false;
   heating_input = false;
   fan_input = false;
@@ -237,6 +254,9 @@ int main(void)
     if (TIM6->SR & TIM_SR_UIF == 0x01)
     {
       transmit_Status_Packet();
+
+      uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
+      start_TIM6(timer_Count); // Restart timer
     }
 
     // If character is received on UART then recieve and process status packet
@@ -268,8 +288,13 @@ int main(void)
     // Update GPIO Outputs
     handle_otuputs();
   }
+
+  return 0;
 }
 
+/**
+ * @brief Configures USART3 for communication.
+ */
 void configure_USART3(void)
 {
   // TODO: Verify this configuration with requirements
@@ -313,6 +338,49 @@ void configure_USART3(void)
 	USART3->CR1 |= (USART_CR1_TE | USART_CR1_UE | USART_CR1_RE);
 }
 
+/**
+ * @brief Configures the ADC for temperature sensing.
+ */
+void configure_ADC(void)
+{
+}
+
+/**
+ * @brief Transmits a byte of data via UART.
+ * 
+ * @param data The data to be transmitted.
+ */
+void transmit_UART(uint8_t data)
+{
+}
+
+/**
+ * @brief Transmits a status packet via UART.
+ */
+void transmit_Status_Packet(void)
+{
+}
+
+/**
+ * @brief Receives a byte of data via UART.
+ * 
+ * @return The received data.
+ */
+uint8_t receive_UART(void)
+{
+    return 0;
+}
+
+/**
+ * @brief Receives a status packet via UART.
+ */
+void receive_Status_Packet(void)
+{
+}
+
+/**
+ * @brief Configures TIM6 for timing operations.
+ */
 void configure_TIM6(void)
 {
 	// Ensure timer is off and all configurations are reset
@@ -341,6 +409,9 @@ void configure_TIM6(void)
 	stop_TIM6();
 }
 
+/**
+ * @brief Configures TIM7 for timing operations.
+ */
 void configure_TIM7(void)
 {
   // Ensure timer is off and all configurations are reset
@@ -369,11 +440,93 @@ void configure_TIM7(void)
 	stop_TIM6();
 }
 
+/**
+ * @brief Configures the RCC (Reset and Clock Control) for system initialization.
+ */
 void configure_RCC(void)
 {
 
 }
 
+/**
+ * @brief Configures the GPIOs (General Purpose Input/Output) for system initialization.
+ */
+void configure_GPIOs(void)
+{
+}
+
+/**
+ * @brief Configures GPIOA for system initialization.
+ * 
+ * GPIOA3 - Light Output (LED0)
+ * GPIOA8 - Fan Output (LED1)
+ * GPIOA9 - Light Switch (SW3)
+ * GPIOA10 - Light Intensity Sensor (SW4)
+ * 
+ */
+void configure_GPIOA(void)
+{
+  
+}
+
+/**
+ * @brief Configures GPIOB for system initialization.
+ * 
+ * GPIOB0 - Fan Switch (SW6)
+ * GPIOB1 - Fan Control Output (LED2)
+ * GPIOB8 - Heater Output (LED6)
+ * GPIOB10 - UART3 Transmit
+ * GPIOB11 - UART3 Receive
+ * 
+ */
+void configure_GPIOB(void)
+{
+}
+
+/**
+ * @brief Configures GPIOF for system initialization.
+ * 
+ * GPIOF8 - Cooling Output (LED7)
+ * 
+ */
+void configure_GPIOF(void)
+{
+  // Configure:
+	// LED7: PF8	(Output, Clear Floating Values, Active Low)
+	
+	// Configure I/O Ports
+	// Clear LED Modes (Set 0b00 for bit pairs)
+	GPIOF->MODER &= ~(GPIO_MODER_MODER8_Msk); 																// Bit 8 LED7
+
+	// Set LED Modes as Output (Set 0b01 for bit pairs)
+	GPIOF->MODER |= (0x01 << GPIO_MODER_MODER8_Pos); 													// Bit 8 LED7
+	
+	// Enable Push-Pull Output Mode (Clear Relevant Bits)
+	GPIOF->OTYPER &= ~(GPIO_OTYPER_OT8); 																			// Bit 8 LED7
+	
+	// Clear Speed Modes (Set 0b00 for bit pairs, by anding ~0b11)
+	GPIOF->OSPEEDR &= (unsigned int) (~(0x03 << GPIO_OSPEEDR_OSPEED8_Pos)); 	// Bit 8 LED7
+	
+	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
+	GPIOF->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED8_Pos); 			// Bit 8 LED7
+	
+	// Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
+	GPIOF->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD8_Pos)); 				// Bit 8 LED7
+	
+	// Set Output Data Register to TURN OFF LEDS by default
+	GPIOF->ODR |= GPIO_ODR_OD8;
+}
+
+/**
+ * @brief Configures the timers for system initialization.
+ */
+void configure_Timers(void)
+{
+}
+
+/**
+ * @brief Handles the output control based on the output states.
+ */
 void handle_outputs(void)
 {
   if (cooling_output)
@@ -413,7 +566,33 @@ void handle_outputs(void)
   }
 }
 
-// Device Control methods
+/**
+ * Calculates the count value for TIM6 based on the desired rate.
+ *
+ * @param rate The desired rate in Hz.
+ * @return The count value for TIM6.
+ */
+uint16_t count_from_rate_TIM6(float rate)
+{
+  return (uint16_t)(TIM6_RATE / rate);
+}
+
+/**
+ * Calculates the count value for TIM7 based on the desired delay in milliseconds.
+ *
+ * @param delay_ms The desired delay in milliseconds.
+ * @return The count value for TIM7.
+ */
+uint16_t count_from_delay_ms_TIM7(int delay_ms)
+{
+  return (uint16_t)(TIM7_RATE * delay_ms / 1000);
+}
+
+/**
+ * @brief Sets the cooling output state. (LED7 - PF8)
+ * 
+ * @param on Whether the cooling output should be turned on or off.
+ */
 void set_cooling(bool on)
 {
   // Cooling is on PF8
@@ -428,6 +607,11 @@ void set_cooling(bool on)
   }
 }
 
+/**
+ * @brief Sets the heating output state. (LED6 - PB8)
+ * 
+ * @param on Whether the heating output should be turned on or off.
+ */
 void set_heating(bool on)
 {
   // Heater is on PB8
@@ -442,6 +626,11 @@ void set_heating(bool on)
   }
 }
 
+/**
+ * @brief Sets the fan output state. (LED1 - PA8)
+ * 
+ * @param on Whether the fan output should be turned on or off.
+ */
 void set_fan(bool on)
 {
   // Fan is on PB1
@@ -456,6 +645,11 @@ void set_fan(bool on)
   }
 }
 
+/**
+ * @brief Sets the light output state. (LED0 - PA3)
+ * 
+ * @param on Whether the light output should be turned on or off.
+ */
 void set_light(bool on)
 {
   // Light is on PA3
@@ -468,6 +662,146 @@ void set_light(bool on)
   {
     GPIOA->ODR &= ~GPIO_ODR_OD3;
   }
+}
+
+/**
+ * @brief Gets the temperature reading.
+ * 
+ * @return The temperature reading in degrees Celsius.
+ */
+float get_temperature(void)
+{
+  // 0-4095 to -5 to 45 by linear relationship between ADC and temperature 0 ADC is -5 and 4095 ADC is 45
+  return float((get_ADC_temperature(); / 4095.0) * 50.0 - 5.0);
+}
+
+/**
+ * @brief Gets the ADC temperature reading. (0-4095) from (ADC1 - PF10)
+ * 
+ * @return The ADC temperature reading.
+ */
+int get_ADC_temperature(void)
+{
+  return 0; // TODO: Implement this
+}
+
+/**
+ * @brief Gets the light intensity.
+ * 
+ * @return The light intensity.
+ */
+bool get_light_intensity(void)
+{
+  return false; // TODO: Implement this
+}
+
+/**
+ * @brief Gets the fan switch state.
+ * 
+ * @return The fan switch state.
+ */
+bool get_fan_switch(void)
+{
+  return false; // TODO: Implement this
+}
+
+/**
+ * @brief Gets the light switch state.
+ * 
+ * @return The light switch state.
+ */
+bool get_light_switch(void)
+{
+  return false; // TODO: Implement this
+}
+
+/**
+ * @brief Starts TIM6 with the specified count value.
+ * 
+ * @param count The count value.
+ */
+void start_TIM6(uint16_t count)
+{
+	// Ensure timer is off
+	stop_TIM6();
+
+	// Clear UIF overflow flag
+	TIM6->SR &= ~(TIM_SR_UIF_Msk);
+	
+  // Set autoreload register and enable counter
+	TIM6->ARR &= ~(TIM_ARR_ARR_Msk);							          // Clear autoreload register
+	TIM6->ARR |= ((unsigned int)count << TIM_ARR_ARR_Pos);  // Set autoreload register
+	TIM6->CR1 |= TIM_CR1_CEN;											          // Enable counter
+}
+
+/**
+ * @brief Starts TIM7 with the specified count value.
+ * 
+ * @param count The count value.
+ */
+void start_TIM7(uint16_t count)
+{
+   // TODO: Implement this
+}
+
+/**
+ * @brief Waits for TIM6 to finish.
+ */
+void wait_For_TIM6(void)
+{
+   // TODO: Implement this
+}
+
+/**
+ * @brief Waits for TIM7 to finish.
+ */
+void wait_For_TIM7(void)
+{
+  // Wait for timer to finish or for the global timer to overflow twice (2s)
+  initial_global = global_timer;
+  while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < 2));
+}
+
+/**
+ * @brief Stops TIM6.
+ */
+void stop_TIM6(void)
+{
+	// Ensure timer is off
+	TIM6->CR1 &= ~TIM_CR1_CEN;
+	// Clear UIF overflow flag
+	TIM6->SR &= ~(TIM_SR_UIF_Msk);
+}
+
+/**
+ * @brief Stops TIM7.
+ */
+void stop_TIM7(void)
+{
+	// Ensure timer is off
+	TIM7->CR1 &= ~TIM_CR1_CEN;
+	// Clear UIF overflow flag
+	TIM7->SR &= ~(TIM_SR_UIF_Msk);
+}
+
+bool handle_cooling(void)
+{
+    return false; // TODO: Implement this
+}
+
+bool handle_heating(void)
+{
+    return false;
+}
+
+bool handle_fan(void)
+{
+    return false;
+}
+
+bool handle_light(void)
+{
+    return false;
 }
 
 /*
