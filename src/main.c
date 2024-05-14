@@ -443,16 +443,32 @@ void configure_TIM7(void)
 /**
  * @brief Configures the RCC (Reset and Clock Control) for system initialization.
  */
-void configure_RCC(void)
+void configure_RCC(void) //Cam
 {
+	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN;						//enable RCC for Timer 6, Timer 7, and USART3
+	RCC->APB1RSTR |= RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST;				//Reset the peripheral interface
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN;					//Config to enable GPIOA, B, and F
+	RCC->AHB1RSTR |= RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST;		//Reset control interface
+	RCC->APB2ENR |= RCC_APB2ENR_ADC3EN;																												// enable RCC for ADC 3
+	RCC->APB2RSTR |= RCC_APB2RSTR_ADCRST;																											//Reset control interface
+	__asm("nop");
+	__asm("nop");
+	RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST);		//Clear reset bit
+	RCC->AHB1RSTR &= ~(RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST);//Clear reset	bit
+	RCC->APB2RSTR &= ~(RCC_APB2RSTR_ADCRST);
+	__asm("nop");
+	__asm("nop");
 
 }
 
 /**
  * @brief Configures the GPIOs (General Purpose Input/Output) for system initialization.
  */
-void configure_GPIOs(void)
+void configure_GPIOs(void) //Cam
 {
+	configure_GPIOA();
+	configure_GPIOB();
+	configure_GPIOF();
 }
 
 /**
@@ -464,9 +480,28 @@ void configure_GPIOs(void)
  * GPIOA10 - Light Intensity Sensor (SW4)
  * 
  */
-void configure_GPIOA(void)
+void configure_GPIOA(void) //Cam
 {
-  
+	//clear target port MODER bits
+  GPIOA->MODER &= ~(GPIO_MODER_MODE3_Msk | GPIO_MODER_MODE8_Msk | GPIO_MODER_MODE9_Msk | GPIO_MODER_MODE10_Msk);
+	//set 3, 8, and 9 as output (10 already set as input)
+	GPIOA->MODER |= (0x01 << GPIO_MODER_MODE3_Pos) | (0x01 << GPIO_MODER_MODE8_Pos) | (0x01 << GPIO_MODER_MODE9_Pos);
+	
+	//enable push-pull output mode
+	GPIOA->OTYPER &= ~(GPIO_OTYPER_OT3_Msk | GPIO_OTYPER_OT8_Msk | GPIO_OTYPER_OT9_Msk);
+	
+	//clear speed bits
+	GPIOA->OSPEEDR &= (unsigned int) ~(GPIO_OSPEEDR_OSPEED3_Msk | GPIO_OSPEEDR_OSPEED8_Msk | GPIO_OSPEEDR_OSPEED9_Msk | GPIO_OSPEEDR_OSPEED10_Msk);
+	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
+	GPIOA->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED3_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED8_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED9_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED10_Pos);
+	
+	//clear PUPD register bits
+	GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPD3_Msk | GPIO_PUPDR_PUPD8_Msk | GPIO_PUPDR_PUPD9_Msk | GPIO_PUPDR_PUPD10_Msk);
+	//enable pull-ups
+	GPIOA->PUPDR |= (0x01 << GPIO_PUPDR_PUPD3_Pos) | (0x01 << GPIO_PUPDR_PUPD8_Pos) | (0x01 << GPIO_PUPDR_PUPD9_Pos) | (0x01 << GPIO_PUPDR_PUPD10_Pos);
+	
+	//ensure all LEDs are off by default
+	GPIOA->ODR |= (0x01 << GPIO_ODR_OD3_Pos) | (0x01 << GPIO_ODR_OD8_Pos) | (0x01 << GPIO_ODR_OD9_Pos);
 }
 
 /**
@@ -479,8 +514,28 @@ void configure_GPIOA(void)
  * GPIOB11 - UART3 Receive
  * 
  */
-void configure_GPIOB(void)
+void configure_GPIOB(void) //Cam
 {
+	//clear target port MODER bits
+  GPIOB->MODER &= ~(GPIO_MODER_MODE0_Msk | GPIO_MODER_MODE1_Msk | GPIO_MODER_MODE8_Msk);
+	//set 1, and 8 as output (0 already set as input)
+	GPIOB->MODER |= (0x01 << GPIO_MODER_MODE1_Pos) | (0x01 << GPIO_MODER_MODE8_Pos);
+	
+	//enable push-pull output mode
+	GPIOB->OTYPER &= ~(GPIO_OTYPER_OT1_Msk | GPIO_OTYPER_OT8_Msk);
+	
+	//clear speed bits
+	GPIOB->OSPEEDR &= (unsigned int) ~(GPIO_OSPEEDR_OSPEED0_Msk | GPIO_OSPEEDR_OSPEED1_Msk | GPIO_OSPEEDR_OSPEED8_Msk);
+	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
+	GPIOB->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED0_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED1_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED8_Pos);
+	
+	//clear PUPD register bits
+	GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD0_Msk | GPIO_PUPDR_PUPD1_Msk | GPIO_PUPDR_PUPD8_Msk);
+	//enable pull-ups
+	GPIOB->PUPDR |= (0x01 << GPIO_PUPDR_PUPD0_Pos) | (0x01 << GPIO_PUPDR_PUPD1_Pos) | (0x01 << GPIO_PUPDR_PUPD8_Pos);
+	
+	//ensure all LEDs are off by default
+	GPIOB->ODR |= (0x01 << GPIO_ODR_OD1_Pos) | (0x01 << GPIO_ODR_OD8_Pos);
 }
 
 /**
@@ -522,6 +577,8 @@ void configure_GPIOF(void)
  */
 void configure_Timers(void)
 {
+	configure_TIM6();
+	configure_TIM7();
 }
 
 /**
@@ -690,8 +747,19 @@ int get_ADC_temperature(void)
  * 
  * @return The light intensity.
  */
-bool get_light_intensity(void)
+bool get_light_intensity(void) //Cam
 {
+	uint32_t PA10 = GPIOA->IDR & GPIO_IDR_ID10_Msk;
+	
+	switch(PA10)
+	{
+		case 0x00:
+			return false;
+		case (0x01 << GPIO_IDR_ID10_Pos):
+			return true;
+		default:
+			return false;
+	}
   return false; // TODO: Implement this
 }
 
