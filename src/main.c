@@ -239,11 +239,11 @@ int main(void)
   fan_input = false;
   light_input = false;
 
-  bool light_intensity_sensor = false;
-  bool fan_switch = false;
-  bool light_switch = false;
-  float temperature_input = 0.0;
-  int adc_temperature = 0;
+  light_intensity_sensor = false;
+  fan_switch = false;
+  light_switch = false;
+  temperature_input = 0.0;
+  adc_temperature = 0;
 
   uint8_t status_frame = 0x00;  // A valid status frame will never be 0x00
                                 // it will have 0b0011 in the first 4 bits therefore 0x3n is a valid frame where n is the status bits
@@ -787,7 +787,7 @@ bool get_fan_switch(void) //Cam
  * 
  * @return The light switch state.
  */
-bool get_light_switch(void)
+bool get_light_switch(void) //Cam
 {
   uint32_t PA9 = GPIOA->IDR & GPIO_IDR_ID9_Msk;
 	
@@ -888,7 +888,18 @@ bool handle_fan(void)
 
 bool handle_light(void)
 {
-    return false;
+    if (light_input) //if Light switch was hit
+		{
+			if (light_input){ // if light is on, turn it off
+				return false;
+			} else if (light_intensity_sensor){	//if light is off and light intensity sensor is low, turn light on
+				return true;
+			} else {		//LIS indicated that room is already lit, keep light off
+				return false;
+			}
+		} else { //switch not hit, return prev value
+			return light_output;
+		}
 }
 
 /*
