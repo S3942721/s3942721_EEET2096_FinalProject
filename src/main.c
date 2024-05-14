@@ -24,6 +24,7 @@
 #define CHAR_READ_TIMEOUT 3 // Max number of characters to read before timeout
 #define USART_TIMEOUT 1000 // timeout for USART
 #define ADC_CONVERSION_TIMEOUT 1000 // timeout for ADC conversion
+#define DEFAULT_TIMEOUT 2 // 2s timeout for general use
 
 // Define masks for ALL LEDs on the board
 #define GPIOA_LED_MASK (GPIO_ODR_OD3 | GPIO_ODR_OD8 | GPIO_ODR_OD9 | GPIO_ODR_OD10)
@@ -200,6 +201,9 @@ bool heating_input;
 bool fan_input;
 bool light_input;
 
+bool fan_timer_active;
+int fan_timer_count = 0; // Time count for 20s fan off timer
+
 bool light_intensity_sensor;
 bool fan_switch;
 bool light_switch;
@@ -257,6 +261,15 @@ int main(void)
 
       uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
       start_TIM6(timer_Count); // Restart timer
+
+      // Increment global timer
+      global_timer++;
+
+      // If fan timer is active then increment count
+      if (fan_timer_active)
+      {
+        fan_timer_count++;
+      }
     }
 
     // If character is received on UART then recieve and process status packet
@@ -343,6 +356,20 @@ void configure_USART3(void)
  */
 void configure_ADC(void)
 {
+  // Assuming RCC is already configured and enabled for ADC3
+  // ADC3 is on PF10
+
+  // Configure to run in single channel mode and in single conversion and sample mode
+  // Prescaler is set to /8
+  // Resolution is set to 12-bit
+  // Conversion time is set to 56 cycles (This is the minimum value for 12-bit resolution)
+  // Data alignment is set to right
+  
+  // TODO: Refer to notes in the word document
+
+  // Set ADC3 to be in single channel mode
+  ADC3->CR1 &= ~(ADC_CR1_SCAN);
+
 }
 
 /**
@@ -352,6 +379,7 @@ void configure_ADC(void)
  */
 void transmit_UART(uint8_t data)
 {
+  // TODO: Implement this
 }
 
 /**
@@ -359,6 +387,7 @@ void transmit_UART(uint8_t data)
  */
 void transmit_Status_Packet(void)
 {
+  // TODO: Implement this
 }
 
 /**
@@ -368,7 +397,8 @@ void transmit_Status_Packet(void)
  */
 uint8_t receive_UART(void)
 {
-    return 0;
+  // TODO: Implement this
+  return 0;
 }
 
 /**
@@ -376,6 +406,7 @@ uint8_t receive_UART(void)
  */
 void receive_Status_Packet(void)
 {
+  // TODO: Implement this
 }
 
 /**
@@ -442,23 +473,26 @@ void configure_TIM7(void)
 
 /**
  * @brief Configures the RCC (Reset and Clock Control) for system initialization.
+ * 
+ * This function enables the RCC for Timer 6, Timer 7, and USART3, and enables the GPIOs for GPIOA, GPIOB, and GPIOF.
  */
-void configure_RCC(void) //Cam
+void configure_RCC(void) //Cam + Sam (Minor fixes and documentation)
 {
-	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN;						//enable RCC for Timer 6, Timer 7, and USART3
-	RCC->APB1RSTR |= RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST;				//Reset the peripheral interface
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN;					//Config to enable GPIOA, B, and F
-	RCC->AHB1RSTR |= RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST;		//Reset control interface
-	RCC->APB2ENR |= RCC_APB2ENR_ADC3EN;																												// enable RCC for ADC 3
-	RCC->APB2RSTR |= RCC_APB2RSTR_ADCRST;																											//Reset control interface
-	__asm("nop");
-	__asm("nop");
-	RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST);		//Clear reset bit
+  // Enable RCC for Timer 6, Timer 7, and USART3
+	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN;						// Enable RCC for Timer 6, Timer 7, and USART3
+	RCC->APB1RSTR |= RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST;		// Reset the peripheral interface
+	// Enable RCC for GPIOA, GPIOB, and GPIOF
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN;					// Config to enable GPIOA, B, and F
+	RCC->AHB1RSTR |= RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST;		// Reset control interface
+	// Enable RCC for ADC1
+  RCC->APB2ENR |= RCC_APB2ENR_ADC3EN;																												// Enable RCC for ADC 3
+	RCC->APB2RSTR |= RCC_APB2RSTR_ADCRST;																											// Reset control interface
+	__asm("nop");	__asm("nop");
+	// Clear reset bits for Timer 6, Timer 7, USART3, GPIOA, GPIOB, GPIOF, and ADC1
+  RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST);		//Clear reset bit
 	RCC->AHB1RSTR &= ~(RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST);//Clear reset	bit
 	RCC->APB2RSTR &= ~(RCC_APB2RSTR_ADCRST);
-	__asm("nop");
-	__asm("nop");
-
+	__asm("nop");	__asm("nop");
 }
 
 /**
@@ -480,28 +514,46 @@ void configure_GPIOs(void) //Cam
  * GPIOA10 - Light Intensity Sensor (SW4)
  * 
  */
-void configure_GPIOA(void) //Cam
+void configure_GPIOA(void) //Cam (Sam - Bug fixes and documentation/formatting)
 {
-	//clear target port MODER bits
-  GPIOA->MODER &= ~(GPIO_MODER_MODE3_Msk | GPIO_MODER_MODE8_Msk | GPIO_MODER_MODE9_Msk | GPIO_MODER_MODE10_Msk);
-	//set 3, 8, and 9 as output (10 already set as input)
-	GPIOA->MODER |= (0x01 << GPIO_MODER_MODE3_Pos) | (0x01 << GPIO_MODER_MODE8_Pos) | (0x01 << GPIO_MODER_MODE9_Pos);
-	
-	//enable push-pull output mode
-	GPIOA->OTYPER &= ~(GPIO_OTYPER_OT3_Msk | GPIO_OTYPER_OT8_Msk | GPIO_OTYPER_OT9_Msk);
-	
-	//clear speed bits
-	GPIOA->OSPEEDR &= (unsigned int) ~(GPIO_OSPEEDR_OSPEED3_Msk | GPIO_OSPEEDR_OSPEED8_Msk | GPIO_OSPEEDR_OSPEED9_Msk | GPIO_OSPEEDR_OSPEED10_Msk);
+	// Configure:
+	// LED0: PA3 	(Output, Clear Floating Values, Active Low)
+	// LED1: PA8 	(Output, Clear Floating Values, Active Low)
+	// LED2: PA9 	(Input, Clear Floating Values, Active Low)
+	// LED3: PA10 (Input, Clear Floating Values, Active Low)
+
+	// Configure I/O Ports
+	// Clear GPIO Modes (Set 0b00 for all bit pairs)
+	GPIOA->MODER &= ~(GPIO_MODER_MODER3_Msk | GPIO_MODER_MODER8_Msk | 
+										GPIO_MODER_MODER9_Msk | GPIO_MODER_MODER10_Msk);
+
+	// Set LED Modes as Output (Set 0b01 for bit pairs)
+	GPIOA->MODER |= ((0x01 << GPIO_MODER_MODER3_Pos) | 
+                  (0x01 << GPIO_MODER_MODER8_Pos));
+
+	// Enable Push-Pull Output Mode (Clear Relevant Bits)
+	GPIOA->OTYPER &= ~(GPIO_OTYPER_OT3 | GPIO_OTYPER_OT8);
+
+	// Clear Speed Modes (Set 0b00 for bit pairs, by anding ~0b11)
+	GPIOA->OSPEEDR &= (unsigned int) (~(0x03 << GPIO_OSPEEDR_OSPEED3_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED8_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED9_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED10_Pos));
+
 	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
-	GPIOA->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED3_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED8_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED9_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED10_Pos);
-	
-	//clear PUPD register bits
-	GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPD3_Msk | GPIO_PUPDR_PUPD8_Msk | GPIO_PUPDR_PUPD9_Msk | GPIO_PUPDR_PUPD10_Msk);
-	//enable pull-ups
-	GPIOA->PUPDR |= (0x01 << GPIO_PUPDR_PUPD3_Pos) | (0x01 << GPIO_PUPDR_PUPD8_Pos) | (0x01 << GPIO_PUPDR_PUPD9_Pos) | (0x01 << GPIO_PUPDR_PUPD10_Pos);
-	
-	//ensure all LEDs are off by default
-	GPIOA->ODR |= (0x01 << GPIO_ODR_OD3_Pos) | (0x01 << GPIO_ODR_OD8_Pos) | (0x01 << GPIO_ODR_OD9_Pos);
+	GPIOA->OSPEEDR |= ((unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED3_Pos) | 
+										 (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED8_Pos) | 
+										 (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED9_Pos) | 
+										 (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED10_Pos));
+
+	// Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
+	GPIOA->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD3_Pos) | 
+                                  ~(0x03 << GPIO_PUPDR_PUPD8_Pos) | 
+                                  ~(0x03 << GPIO_PUPDR_PUPD9_Pos) | 
+                                  ~(0x03 << GPIO_PUPDR_PUPD10_Pos));
+
+	// Set Output Data Register to TURN OFF LEDS by default
+	GPIOA->ODR |= (GPIO_ODR_OD3 | GPIO_ODR_OD8);
 }
 
 /**
@@ -514,28 +566,57 @@ void configure_GPIOA(void) //Cam
  * GPIOB11 - UART3 Receive
  * 
  */
-void configure_GPIOB(void) //Cam
+void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and documentation/formatting)
 {
-	//clear target port MODER bits
-  GPIOB->MODER &= ~(GPIO_MODER_MODE0_Msk | GPIO_MODER_MODE1_Msk | GPIO_MODER_MODE8_Msk);
-	//set 1, and 8 as output (0 already set as input)
-	GPIOB->MODER |= (0x01 << GPIO_MODER_MODE1_Pos) | (0x01 << GPIO_MODER_MODE8_Pos);
-	
-	//enable push-pull output mode
-	GPIOB->OTYPER &= ~(GPIO_OTYPER_OT1_Msk | GPIO_OTYPER_OT8_Msk);
-	
-	//clear speed bits
-	GPIOB->OSPEEDR &= (unsigned int) ~(GPIO_OSPEEDR_OSPEED0_Msk | GPIO_OSPEEDR_OSPEED1_Msk | GPIO_OSPEEDR_OSPEED8_Msk);
-	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
-	GPIOB->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED0_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED1_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED8_Pos);
-	
-	//clear PUPD register bits
-	GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD0_Msk | GPIO_PUPDR_PUPD1_Msk | GPIO_PUPDR_PUPD8_Msk);
-	//enable pull-ups
-	GPIOB->PUPDR |= (0x01 << GPIO_PUPDR_PUPD0_Pos) | (0x01 << GPIO_PUPDR_PUPD1_Pos) | (0x01 << GPIO_PUPDR_PUPD8_Pos);
-	
-	//ensure all LEDs are off by default
-	GPIOB->ODR |= (0x01 << GPIO_ODR_OD1_Pos) | (0x01 << GPIO_ODR_OD8_Pos);
+  // Configure:
+  // LED2: PB1 	(Output, Clear Floating Values, Active Low)
+  // LED6: PB8 	(Output, Clear Floating Values, Active Low)
+  // SW6: PB0 	(Input, Clear Floating Values, Active Low)
+  // UART3 Transmit: PB10 (Alternate Function, Clear Floating Values, Active Low)
+  // UART3 Receive: PB11 (Alternate Function, Clear Floating Values, Active Low)
+
+  // Configure I/O Ports
+  // Clear GPIO Modes (Set 0b00 for bit pairs)
+  GPIOB->MODER &= ~(GPIO_MODER_MODER1_Msk | GPIO_MODER_MODER8_Msk | 
+                    GPIO_MODER_MODER10_Msk | GPIO_MODER_MODER11_Msk);
+
+  // Set LED Modes as Output (Set 0b01 for bit pairs)
+  GPIOB->MODER |= ((0x01 << GPIO_MODER_MODER1_Pos) | 
+                   (0x01 << GPIO_MODER_MODER8_Pos));
+
+  // Set UART Modes as Alternate Function (Set 0b10 for bit pairs)
+  GPIOB->MODER |= ((0x02 << GPIO_MODER_MODER10_Pos) | 
+                   (0x02 << GPIO_MODER_MODER11_Pos));
+
+  // Set Alternate Function to be AF7 (USART)
+  // Clear AFSEL bits for 10 and 11
+  GPIOB->AFR[1] &= ~(GPIO_AFRH_AFSEL11_Msk | GPIO_AFRH_AFSEL10_Msk);
+  // Set mode for 10 and 11 to be alternate function 7 (0b111)
+  GPIOB->AFR[1] |= (0x07 << GPIO_AFRH_AFSEL11_Pos) | (0x07 << GPIO_AFRH_AFSEL10_Pos);
+
+  // Enable Push-Pull Output Mode (Clear Relevant Bits)
+  GPIOB->OTYPER &= ~(GPIO_OTYPER_OT1 | GPIO_OTYPER_OT8);
+
+  // Clear Speed Modes (Set 0b00 for bit pairs, by anding ~0b11)
+  GPIOB->OSPEEDR &= (unsigned int) (~(0x03 << GPIO_OSPEEDR_OSPEED1_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED8_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED10_Pos) | 
+                                    ~(0x03 << GPIO_OSPEEDR_OSPEED11_Pos));
+
+  // Set Speed Mode to Medium (Set 0b01 for bit pairs)
+  GPIOB->OSPEEDR |= ((unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED1_Pos) | 
+                     (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED8_Pos) | 
+                     (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED10_Pos) | 
+                     (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED11_Pos));
+
+  // Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
+  GPIOB->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD1_Pos) | 
+                                  ~(0x03 << GPIO_PUPDR_PUPD8_Pos) |
+                                  ~(0x03 << GPIO_PUPDR_PUPD10_Pos) |
+                                  ~(0x03 << GPIO_PUPDR_PUPD11_Pos));
+  
+  // Set Output Data Register to TURN OFF LEDS by default
+  GPIOB->ODR |= (GPIO_ODR_OD1 | GPIO_ODR_OD8);
 }
 
 /**
@@ -739,7 +820,9 @@ float get_temperature(void)
  */
 int get_ADC_temperature(void)
 {
-  return 0; // TODO: Implement this
+  // ADC1 is on PF10
+  // Read ADC1 and return the value (Mask to only keep the 12 bits of the ADC value)
+  return (int)(ADC1->DR & 0x0FFF);
 }
 
 /**
@@ -747,19 +830,11 @@ int get_ADC_temperature(void)
  * 
  * @return The light intensity.
  */
-bool get_light_intensity(void) //Cam
+bool get_light_intensity(void) //Cam (Sam - fix bug in function)
 {
-	uint32_t PA10 = GPIOA->IDR & GPIO_IDR_ID10_Msk;
-	
-	switch(PA10)
-	{
-		case 0x00:
-			return true;
-		case (0x01 << GPIO_IDR_ID10_Pos):
-			return false;
-		default:
-			return false;
-	}
+  // Light Intensity Sensor is on PA10
+  // Sensor is active low, return inverted value of the sensor state
+  return (bool)!(GPIOA->IDR & GPIO_IDR_ID10_Msk);
 }
 
 /**
@@ -767,19 +842,11 @@ bool get_light_intensity(void) //Cam
  * 
  * @return The fan switch state.
  */
-bool get_fan_switch(void) //Cam
+bool get_fan_switch(void) //Cam (Sam - fix bug in function)
 {
-  uint32_t PB1 = GPIOB->IDR & GPIO_IDR_ID1_Msk;
-	
-	switch(PB1)
-	{
-		case 0x00:
-			return true;
-		case (0x01 << GPIO_IDR_ID1_Pos):
-			return false;
-		default:
-			return false;
-	}
+  // Fan Switch is on PB0
+  // Switch is active low, return inverted value of the switch state
+  return (bool)!(GPIOB->IDR & GPIO_IDR_ID0_Msk);
 }
 
 /**
@@ -787,19 +854,11 @@ bool get_fan_switch(void) //Cam
  * 
  * @return The light switch state.
  */
-bool get_light_switch(void) //Cam
+bool get_light_switch(void) //Cam (Sam - fix bug in function)
 {
-  uint32_t PA9 = GPIOA->IDR & GPIO_IDR_ID9_Msk;
-	
-	switch(PA9)
-	{
-		case 0x00:
-			return true;
-		case (0x01 << GPIO_IDR_ID9_Pos):
-			return false;
-		default:
-			return false;
-	}
+  // Light Switch is on PA9
+  // Switch is active low, return inverted value of the switch state
+  return (bool)!(GPIOA->IDR & GPIO_IDR_ID9_Msk);  
 }
 
 /**
@@ -828,15 +887,26 @@ void start_TIM6(uint16_t count)
  */
 void start_TIM7(uint16_t count)
 {
-   // TODO: Implement this
+  // Ensure timer is off
+  stop_TIM7();
+
+  // Clear UIF overflow flag
+  TIM7->SR &= ~(TIM_SR_UIF_Msk);
+
+  // Set autoreload register and enable counter
+  TIM7->ARR &= ~(TIM_ARR_ARR_Msk);							          // Clear autoreload register
+  TIM7->ARR |= ((unsigned int)count << TIM_ARR_ARR_Pos);  // Set autoreload register
+  TIM7->CR1 |= TIM_CR1_CEN;											          // Enable counter
 }
 
 /**
- * @brief Waits for TIM6 to finish.
+ * @brief Waits for TIM6 to finish. (Not used in final implementation)
  */
 void wait_For_TIM6(void)
 {
-   // TODO: Implement this
+  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout)
+  int initial_global = global_timer;
+  while ((((volatile int)(TIM6->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
 }
 
 /**
@@ -844,9 +914,9 @@ void wait_For_TIM6(void)
  */
 void wait_For_TIM7(void)
 {
-  // Wait for timer to finish or for the global timer to overflow twice (2s)
-  initial_global = global_timer;
-  while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < 2));
+  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout)
+  int initial_global = global_timer;
+  while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
 }
 
 /**
@@ -871,47 +941,102 @@ void stop_TIM7(void)
 	TIM7->SR &= ~(TIM_SR_UIF_Msk);
 }
 
+/**
+ * @brief Handles the cooling logic.
+ * 
+ * This function checks the cooling input and updates the cooling and heating outputs accordingly.
+ * If the cooling input is true, the cooling output is toggled and the heating output is set to the opposite value.
+ * 
+ * @return The current value of the cooling output.
+ */
 bool handle_cooling(void)
 {
-		if (cooling_input){
-			return !cooling_output;
-		} else {
-			return cooling_output;
-		}
+  if (cooling_input)
+  {
+    cooling_output = !cooling_output;
+    heating_output = !cooling_output;
+  }
+  return cooling_output;
 }
 
+/**
+ * @brief Handles the heating logic.
+ * 
+ * This function checks the heating input and updates the heating and cooling outputs accordingly.
+ * If the heating input is true, the heating output is toggled and the cooling output is set to the opposite value.
+ * 
+ * @return The current value of the heating output.
+ */
 bool handle_heating(void)
 {
-    if (heating_input){
-			return !heating_output;
-		} else {
-			return heating_output;
-		}
+  if (heating_input)
+  {
+    heating_output = !heating_output;
+    cooling_output = !heating_output;
+  }
+  return heating_output;
 }
 
 bool handle_fan(void)
 {
-    if (fan_input){
-			return !fan_output;
-		} else {
-			return fan_output;
-		}
+  // Check if fan "off" timer is currently active
+  if (fan_timer_active)
+  {
+    // If 20s has passed then turn fan back on
+    if (fan_timer_count >= 20)
+    {
+      // Turn fan back on
+      fan_timer_active = false;
+      fan_timer_count = 0;
+      return true;
+    }
+    // If 20s has not passed then keep fan off
+    else
+    {
+      return false;
+    }
+  }
+  // If fan switch was hit
+  else if (fan_input)
+  {
+    // If fan already on then turn off and start 20s timer
+    if (fan_output)
+    {
+      fan_timer_active = true;
+      return false;
+    }
+    // If fan off then turn on
+    else
+    {
+      return true;
+    }
+  }
+  // If fan switch not hit and timeout not running then return previous value
+  else
+  {
+    return fan_output;
+  }
 }
 
-bool handle_light(void)
+bool handle_light(void) //Cam (Sam - fix bug in function and add functionality)
 {
-    if (light_input) //if Light switch was hit
-		{
-			if (light_input){ // if light is on, turn it off
-				return false;
-			} else if (light_intensity_sensor){	//if light is off and light intensity sensor is low, turn light on
-				return true;
-			} else {		//LIS indicated that room is already lit, keep light off
-				return false;
-			}
-		} else { //switch not hit, return prev value
-			return light_output;
-		}
+  // If Light switch was confirmed to be hit (With 50ms debounce)
+  if (light_input)
+  {
+    // If light already detected keep light off
+    if (get_light_intensity())
+    {
+      return false;
+    }
+    // Return opposite of current light state (as switch was hit and it is a toggle)
+    else
+    {
+      return !light_output;
+    }
+  // Switch not hit, return prev value
+  } else {
+    return light_output;
+  }
 }
 
 /*
