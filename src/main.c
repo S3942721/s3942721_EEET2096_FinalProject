@@ -266,7 +266,7 @@ int main(void)
     light_output = handle_light();
 
     // Update GPIO Outputs
-    handle_otuputs();
+    handle_outputs();
   }
 }
 
