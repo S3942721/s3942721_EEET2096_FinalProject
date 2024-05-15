@@ -38,6 +38,8 @@
 #define ASCII_LF 0x0A
 #define ASCII_AT 0x40
 
+#define TEMP_DIFF_MIN 0.1 // Minimum temperature difference to stop auto heating or cooling when usart control is active
+
 /*
   Methids/Functions/Subroutines we need:
 	Config methods
@@ -220,6 +222,7 @@ bool light_intensity_sensor;
 bool fan_switch;
 bool light_switch;
 float temperature_input;
+float temperature_output;
 int adc_temperature;
 int incomming_string_index;
 
@@ -329,6 +332,7 @@ int main(void)
     handle_cooling_and_heating();
     fan_output = handle_fan();
     light_output = handle_light();
+    temperature_output = get_temperature();
 
     // Receive array of characters to be transmitted
     char* outgoing_string_ptr = get_outgoing_string();
@@ -535,7 +539,7 @@ char *get_outgoing_string(void)
   // Set temperature characters
   // Convert temperature to string
   char* temperature_string = {0};
-  sprintf(temperature_string, "%+05.1f", (double)get_temperature());
+  sprintf(temperature_string, "%+05.1f", (double)temperature_output);
 
   // Set temperature characters
   for (int i = 0; i < 5; i++)
@@ -1103,6 +1107,12 @@ bool TIM7_expired(void)
   return expired;
 }
 
+/**
+ * @brief Waits for TIM6 to expire.
+ * 
+ * This function waits until the TIM6 timer has expired before returning.
+ * The TIM6_expired() function is used to check if the timer has expired.
+ */
 void wait_For_TIM6(void)
 {
   // Wait for TIM6 to expire
@@ -1112,6 +1122,12 @@ void wait_For_TIM6(void)
   }
 }
 
+/**
+ * @brief Waits for TIM7 to expire.
+ * 
+ * This function waits until the TIM7 timer has expired before returning.
+ * The TIM7_expired() function is used to check if the timer has expired.
+ */
 void wait_For_TIM7(void)
 {
   // Wait for TIM7 to expire
@@ -1182,6 +1198,16 @@ void stop_TIM7(void)
 }
 
 /**
+ * Checks if the temperature has changed a bit.
+ * 
+ * @return true if the temperature has changed, false otherwise.
+ */
+bool temperature_changed() 
+{
+  return (get_temperature() - temperature_input) > TEMP_DIFF_MIN || (temperature_input - get_temperature()) > TEMP_DIFF_MIN;
+}
+
+/**
  * @brief Handles the cooling logic.
  * 
  * This function checks the cooling input and updates the cooling and heating outputs accordingly.
@@ -1200,15 +1226,15 @@ void handle_cooling_and_heating(void)
   // UART control (heating_cooling_manual_override_timer_active), the automatic control should not resume.
 
   // Handle cooling logic based on the cooling input and temperature
-  // If override timer is active and expired
-  if (heating_cooling_manual_override_timer_active && manual_override_count >= 15)
+  // If override timer is active and expired and temperature has changed, reset timer and resume automatic control
+  if ((heating_cooling_manual_override_timer_active && manual_override_count >= 15) || (heating_cooling_manual_override_timer_active && temperature_changed()))
   {
     // If manual override timer has expired, reset timer and resume automatic control
     heating_cooling_manual_override_timer_active = false;
     manual_override_count = 0;
   }
 
-  if (temperature_input >= 25.0)
+  if (temperature_input >= 25.0 && !heating_cooling_manual_override_timer_active)
   {
     // If temperature is above 25 degrees, turn off cooling and turn on heating
     cooling_output = false;
@@ -1257,6 +1283,14 @@ void handle_cooling_and_heating(void)
   }
 }
 
+/**
+ * Handles the fan operation based on the current state and inputs.
+ * If the fan "off" timer is active, it checks if 20 seconds have passed and turns the fan back on.
+ * If the fan switch is hit, it either turns off the fan and starts a 20-second timer or turns on the fan.
+ * If the fan switch is not hit and the timeout is not running, it returns the previous value of the fan output.
+ *
+ * @return true if the fan should be turned on, false if the fan should be kept off.
+ */
 bool handle_fan(void)
 {
   // Check if fan "off" timer is currently active
@@ -1298,6 +1332,15 @@ bool handle_fan(void)
   }
 }
 
+/**
+ * @brief Handles the light switch functionality.
+ * 
+ * This function checks if the light switch has been hit with a 50ms debounce. 
+ * If the light switch is hit and the light is not already detected, it toggles the light state.
+ * If the light switch is not hit, it returns the previous light state.
+ * 
+ * @return The updated light state.
+ */
 bool handle_light(void) //Cam (Sam - fix bug in function and add functionality)
 {
   // If Light switch was confirmed to be hit (With 50ms debounce)
