@@ -174,18 +174,22 @@ int get_ADC_temperature(void);
 bool get_light_intensity(void);
 bool get_fan_switch(void);
 bool get_light_switch(void);
+bool get_light_intensity_gpio(void);
+bool get_fan_switch_gpio(void);
+bool get_light_switch_gpio(void);
 
 // Timer Operations methods
 void start_TIM6(uint16_t count);
 void start_TIM7(uint16_t count);
+bool TIM6_expired(void);
+bool TIM7_expired(void);
 void wait_For_TIM6(void);
 void wait_For_TIM7(void);
 void stop_TIM6(void);
 void stop_TIM7(void);
 
 // Handle inputs and outputs methods
-bool handle_cooling(void);
-bool handle_heating(void);
+void handle_cooling_and_heating(void);
 bool handle_fan(void);
 bool handle_light(void);
 void handle_outputs(void);
@@ -209,6 +213,8 @@ bool fan_timer_active;
 int fan_timer_count = 0; // Time count for 20s fan off timer
 bool heating_cooling_manual_override_timer_active;
 int manual_override_count;
+
+bool debounce_timer_active;
 
 bool light_intensity_sensor;
 bool fan_switch;
@@ -267,10 +273,15 @@ int main(void)
 
   incomming_string_index = 0;
 
+  status_packet_recieved = false;
+  debounce_timer_active = false;
+  fan_timer_active = false;
+  heating_cooling_manual_override_timer_active = false;
+
   while (1)
   { 
     // If 1Hz timer has expired then transmit data
-    if ((TIM6->SR & TIM_SR_UIF) == 0x01)
+    if (TIM6_expired())
     {
       transmit_Status_Packet(outgoing_string);
 
@@ -315,8 +326,7 @@ int main(void)
     fan_switch = get_fan_switch();
 
     // Handle inputs
-    cooling_output = handle_cooling();
-    heating_output = handle_heating();
+    handle_cooling_and_heating();
     fan_output = handle_fan();
     light_output = handle_light();
 
@@ -948,11 +958,39 @@ int get_ADC_temperature(void)
 }
 
 /**
- * @brief Gets the light intensity.
+ * @brief Gets the light intensity based on 50ms debounce.
  * 
  * @return The light intensity.
  */
-bool get_light_intensity(void) //Cam (Sam - fix bug in function)
+bool get_light_intensity(void)
+{
+  // Light Intensity Sensor is on PA10
+  bool state = get_light_intensity_gpio();
+  // Sensor is active low, return inverted value of the sensor state
+  // If 50ms timer is started, expired AND switch isn't pressed
+  if (debounce_timer_active && TIM7_expired() && !state)
+  {
+    // Reset debounce timer, return true (Switch is confirmed pressed)
+    debounce_timer_active = false;
+    return true;
+  }
+  // Else, if sensor is active, start debounce timer
+  else if (state)
+  {
+    // Start debounce timer
+    debounce_timer_active = true;
+    start_TIM7(count_from_delay_ms_TIM7(50));
+  }
+  // Else, return false
+  return false;
+}
+
+/**
+ * @brief Gets the light intensity.
+ * 
+ * @return The light intensity GPIO value.
+ */
+bool get_light_intensity_gpio(void)
 {
   // Light Intensity Sensor is on PA10
   // Sensor is active low, return inverted value of the sensor state
@@ -960,11 +998,39 @@ bool get_light_intensity(void) //Cam (Sam - fix bug in function)
 }
 
 /**
+ * @brief Gets the fan switch state based on 50ms debounce.
+ * 
+ * @return The fan switch state.
+ */
+bool get_fan_switch(void)
+{
+  // Fan Switch is on PB0
+  bool state = get_fan_switch_gpio();
+  // Switch is active low, return inverted value of the switch state
+  // If 50ms timer is started, expired AND switch isn't pressed
+  if (debounce_timer_active && TIM7_expired() && !state)
+  {
+    // Reset debounce timer, return true (Switch is confirmed pressed)
+    debounce_timer_active = false;
+    return true;
+  }
+  // Else, if sensor is active, start debounce timer
+  else if (state)
+  {
+    // Start debounce timer
+    debounce_timer_active = true;
+    start_TIM7(count_from_delay_ms_TIM7(50));
+  }
+  // Else, return false
+  return false;
+}
+
+/**
  * @brief Gets the fan switch state.
  * 
  * @return The fan switch state.
  */
-bool get_fan_switch(void) //Cam (Sam - fix bug in function)
+bool get_fan_switch_gpio(void)
 {
   // Fan Switch is on PB0
   // Switch is active low, return inverted value of the switch state
@@ -972,15 +1038,87 @@ bool get_fan_switch(void) //Cam (Sam - fix bug in function)
 }
 
 /**
+ * @brief Gets the light switch state based on 50ms debounce.
+ * 
+ * @return The light switch state.
+ */
+bool get_light_switch(void)
+{
+  // Light Switch is on PA9
+  bool state = get_fan_switch_gpio();
+  // Switch is active low, return inverted value of the switch state
+  // If 50ms timer is started, expired AND switch isn't pressed
+  if (debounce_timer_active && TIM7_expired() && !state)
+  {
+    // Reset debounce timer, return true (Switch is confirmed pressed)
+    debounce_timer_active = false;
+    return true;
+  }
+  // Else, if sensor is active, start debounce timer
+  else if (state)
+  {
+    // Start debounce timer
+    debounce_timer_active = true;
+    start_TIM7(count_from_delay_ms_TIM7(50));
+  }
+  // Else, return false
+  return false;
+}
+
+/**
  * @brief Gets the light switch state.
  * 
  * @return The light switch state.
  */
-bool get_light_switch(void) //Cam (Sam - fix bug in function)
+bool get_light_switch_gpio(void)
 {
   // Light Switch is on PA9
   // Switch is active low, return inverted value of the switch state
   return (bool)!(GPIOA->IDR & GPIO_IDR_ID9_Msk);  
+}
+
+/**
+ * @brief Checks if Timer 6 has expired and clears the expiration flag.
+ * @return true if Timer 6 has expired, false otherwise.
+ */
+bool TIM6_expired(void)
+{
+  // Return if timer expired and clear expiration flag
+  bool expired = (TIM6->SR & TIM_SR_UIF) == 0x01;
+  // Clear UIF overflow flag
+  TIM6->SR &= ~(TIM_SR_UIF_Msk);
+  return expired;
+}
+
+/**
+ * @brief Checks if Timer 7 has expired and clears the expiration flag.
+ * @return true if Timer 7 has expired, false otherwise.
+ */
+bool TIM7_expired(void)
+{
+  // Return if timer expired and clear expiration flag
+  bool expired = (TIM7->SR & TIM_SR_UIF) == 0x01;
+  // Clear UIF overflow flag
+  TIM7->SR &= ~(TIM_SR_UIF_Msk);
+  return expired;
+}
+
+void wait_For_TIM6(void)
+{
+  // Wait for TIM6 to expire
+  while (!TIM6_expired())
+  {
+    // Wait for TIM6 to expire
+  }
+}
+
+void wait_For_TIM7(void)
+{
+  // Wait for TIM7 to expire
+  while (!TIM7_expired())
+  {
+    // Wait for TIM7 to expire
+  }
 }
 
 /**
@@ -1022,26 +1160,6 @@ void start_TIM7(uint16_t count)
 }
 
 /**
- * @brief Waits for TIM6 to finish. (Not used in final implementation)
- */
-void wait_For_TIM6(void)
-{
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
-  int initial_global = global_timer;
-  while ((((volatile int)(TIM6->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
-}
-
-/**
- * @brief Waits for TIM7 to finish.
- */
-void wait_For_TIM7(void)
-{
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
-  int initial_global = global_timer;
-  while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
-}
-
-/**
  * @brief Stops TIM6.
  */
 void stop_TIM6(void)
@@ -1071,32 +1189,72 @@ void stop_TIM7(void)
  * 
  * @return The current value of the cooling output.
  */
-bool handle_cooling(void)
+void handle_cooling_and_heating(void)
 {
-  if (cooling_input)
-  {
-    cooling_output = !cooling_output;
-    heating_output = !cooling_output;
-  }
-  return cooling_output;
-}
+  // Via the UART, the heating / cooling can be turned on or off, however, it will
+  // consider the current temperature. If the temperature is between 16℃ and 25℃, then the
+  // command to turn on / off the heating / cooling / fan will be accepted for 15 seconds and
+  // then the automatic control (as indicated in Section 3c) will resume. If the temperature
+  // range is above 25℃ or below 16℃, the UART command to control the heater / cooling
+  // and fan will be ignored. Should the temperature value change during the 15 second
+  // UART control (heating_cooling_manual_override_timer_active), the automatic control should not resume.
 
-/**
- * @brief Handles the heating logic.
- * 
- * This function checks the heating input and updates the heating and cooling outputs accordingly.
- * If the heating input is true, the heating output is toggled and the cooling output is set to the opposite value.
- * 
- * @return The current value of the heating output.
- */
-bool handle_heating(void)
-{
-  if (heating_input)
+  // Handle cooling logic based on the cooling input and temperature
+  // If override timer is active and expired
+  if (heating_cooling_manual_override_timer_active && manual_override_count >= 15)
   {
-    heating_output = !heating_output;
-    cooling_output = !heating_output;
+    // If manual override timer has expired, reset timer and resume automatic control
+    heating_cooling_manual_override_timer_active = false;
+    manual_override_count = 0;
   }
-  return heating_output;
+
+  if (temperature_input >= 25.0)
+  {
+    // If temperature is above 25 degrees, turn off cooling and turn on heating
+    cooling_output = false;
+    heating_output = true;
+  }
+  else if (temperature_input <= 16.0)
+  {
+    // If temperature is below 16 degrees, turn on cooling and turn off heating
+    cooling_output = true;
+    heating_output = false;
+  }
+  // If temperature is between 16 and 25 degrees and manual override timer is active and not expired
+  else if (heating_cooling_manual_override_timer_active && manual_override_count < 15)
+  {
+    // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
+    if (cooling_input)
+    {
+      cooling_output = !cooling_output;
+      heating_output = !cooling_output;
+    }
+    if (heating_input)
+    {
+      heating_output = !heating_output;
+      cooling_output = !heating_output;
+    }
+  }
+  else
+  {
+    // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
+    if (cooling_input)
+    {
+      cooling_output = !cooling_output;
+      heating_output = !cooling_output;
+      // If cooling input is hit, start 15s timer
+      heating_cooling_manual_override_timer_active = true;
+      manual_override_count = 0;
+    }
+    if (heating_input)
+    {
+      heating_output = !heating_output;
+      cooling_output = !heating_output;
+      // If heating input is hit, start 15s timer
+      heating_cooling_manual_override_timer_active = true;
+      manual_override_count = 0;
+    }
+  }
 }
 
 bool handle_fan(void)
