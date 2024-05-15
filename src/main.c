@@ -239,6 +239,9 @@ int main(void)
 
   configure_RCC();
   configure_GPIOs();
+  configure_Timers();
+  configure_USART3();
+  configure_ADC();
 	
   // Initialise Program State Variables
   // Output is used to control the GPIO outputs
