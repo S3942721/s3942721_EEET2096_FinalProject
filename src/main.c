@@ -174,12 +174,15 @@ int get_ADC_temperature(void);
 bool get_light_intensity(void);
 bool get_fan_switch(void);
 bool get_light_switch(void);
+bool get_light_intensity_gpio(void);
+bool get_fan_switch_gpio(void);
+bool get_light_switch_gpio(void);
 
 // Timer Operations methods
 void start_TIM6(uint16_t count);
 void start_TIM7(uint16_t count);
-void wait_For_TIM6(void);
-void wait_For_TIM7(void);
+bool TIM6_expired(void);
+bool TIM7_expired(void);
 void stop_TIM6(void);
 void stop_TIM7(void);
 
@@ -270,7 +273,7 @@ int main(void)
   while (1)
   { 
     // If 1Hz timer has expired then transmit data
-    if ((TIM6->SR & TIM_SR_UIF) == 0x01)
+    if (TIM6_expired())
     {
       transmit_Status_Packet(outgoing_string);
 
@@ -948,11 +951,39 @@ int get_ADC_temperature(void)
 }
 
 /**
- * @brief Gets the light intensity.
+ * @brief Gets the light intensity based on 50ms debounce.
  * 
  * @return The light intensity.
  */
 bool get_light_intensity(void) //Cam (Sam - fix bug in function)
+{
+  // Light Intensity Sensor is on PA10
+  bool state = get_light_intensity_gpio();
+  // Sensor is active low, return inverted value of the sensor state
+  // If 50ms timer is started, expired AND switch isn't pressed
+  if (debounce_timer_active && TIM7_expired() && !state)
+  {
+    // Reset debounce timer
+    debounce_timer_active = false;
+    return true;
+  }
+  // Else, if sensor is active, start debounce timer
+  else if (state)
+  {
+    // Start debounce timer
+    debounce_timer_active = true;
+    start_TIM7(get_count_from_delay_ms_TIM7(50));
+  }
+  // Else, return false
+  return false;
+}
+
+/**
+ * @brief Gets the light intensity.
+ * 
+ * @return The light intensity GPIO value.
+ */
+bool get_light_intensity_gpio(void)
 {
   // Light Intensity Sensor is on PA10
   // Sensor is active low, return inverted value of the sensor state
@@ -960,11 +991,26 @@ bool get_light_intensity(void) //Cam (Sam - fix bug in function)
 }
 
 /**
- * @brief Gets the fan switch state.
+ * @brief Gets the fan switch state based on 50ms debounce.
  * 
  * @return The fan switch state.
  */
 bool get_fan_switch(void) //Cam (Sam - fix bug in function)
+{
+  // Fan Switch is on PB0
+  // Switch is active low, return inverted value of the switch state
+  bool state = get_fan_switch_gpio(); 
+
+  // If 50ms timer is started (It has been initially pressed), check if it is expired
+  // Else, if switch is pressed, start debounce timer
+}
+
+/**
+ * @brief Gets the fan switch state.
+ * 
+ * @return The fan switch state.
+ */
+bool get_fan_switch_gpio(void) //Cam (Sam - fix bug in function)
 {
   // Fan Switch is on PB0
   // Switch is active low, return inverted value of the switch state
@@ -980,7 +1026,45 @@ bool get_light_switch(void) //Cam (Sam - fix bug in function)
 {
   // Light Switch is on PA9
   // Switch is active low, return inverted value of the switch state
+
+}
+
+/**
+ * @brief Gets the light switch state.
+ * 
+ * @return The light switch state.
+ */
+bool get_light_switch_gpio(void) //Cam (Sam - fix bug in function)
+{
+  // Light Switch is on PA9
+  // Switch is active low, return inverted value of the switch state
   return (bool)!(GPIOA->IDR & GPIO_IDR_ID9_Msk);  
+}
+
+/**
+ * @brief Checks if Timer 6 has expired and clears the expiration flag.
+ * @return true if Timer 6 has expired, false otherwise.
+ */
+bool TIM6_expired(void)
+{
+  // Return if timer expired and clear expiration flag
+  bool expired = (TIM6->SR & TIM_SR_UIF) == 0x01;
+  // Clear UIF overflow flag
+  TIM6->SR &= ~(TIM_SR_UIF_Msk);
+  return expired;
+}
+
+/**
+ * @brief Checks if Timer 7 has expired and clears the expiration flag.
+ * @return true if Timer 7 has expired, false otherwise.
+ */
+bool TIM7_expired(void)
+{
+  // Return if timer expired and clear expiration flag
+  bool expired = (TIM7->SR & TIM_SR_UIF) == 0x01;
+  // Clear UIF overflow flag
+  TIM7->SR &= ~(TIM_SR_UIF_Msk);
+  return expired;
 }
 
 /**
@@ -1019,26 +1103,6 @@ void start_TIM7(uint16_t count)
   TIM7->ARR &= ~(TIM_ARR_ARR_Msk);							          // Clear autoreload register
   TIM7->ARR |= ((unsigned int)count << TIM_ARR_ARR_Pos);  // Set autoreload register
   TIM7->CR1 |= TIM_CR1_CEN;											          // Enable counter
-}
-
-/**
- * @brief Waits for TIM6 to finish. (Not used in final implementation)
- */
-void wait_For_TIM6(void)
-{
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
-  int initial_global = global_timer;
-  while ((((volatile int)(TIM6->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
-}
-
-/**
- * @brief Waits for TIM7 to finish.
- */
-void wait_For_TIM7(void)
-{
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
-  int initial_global = global_timer;
-  while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
 }
 
 /**
