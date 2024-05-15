@@ -207,6 +207,8 @@ bool light_input;
 
 bool fan_timer_active;
 int fan_timer_count = 0; // Time count for 20s fan off timer
+bool heating_cooling_manual_override_timer_active;
+int manual_override_count;
 
 bool light_intensity_sensor;
 bool fan_switch;
@@ -283,6 +285,11 @@ int main(void)
       {
         fan_timer_count++;
       }
+			
+			if (heating_cooling_manual_override_timer_active)
+			{
+				manual_override_count++;
+			}
     }
 
     // Recieve/Check for USART input
@@ -321,6 +328,8 @@ int main(void)
     {
       outgoing_string[i] = outgoing_string_ptr[i];
     }
+		
+		// Handle temperature for auto heating/cooling (If an input has not been given
 
     // Update GPIO Outputs
     handle_outputs();
@@ -699,22 +708,13 @@ void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and docum
 
   // Configure I/O Ports
   // Clear GPIO Modes (Set 0b00 for bit pairs)
-  GPIOB->MODER &= ~(GPIO_MODER_MODER1_Msk | GPIO_MODER_MODER8_Msk | 
-                    GPIO_MODER_MODER10_Msk | GPIO_MODER_MODER11_Msk);
+  GPIOB->MODER &= ~(GPIO_MODER_MODER0_Msk | GPIO_MODER_MODER1_Msk |
+										GPIO_MODER_MODER8_Msk | GPIO_MODER_MODER10_Msk 
+										| GPIO_MODER_MODER11_Msk);
 
   // Set LED Modes as Output (Set 0b01 for bit pairs)
   GPIOB->MODER |= ((0x01 << GPIO_MODER_MODER1_Pos) | 
                    (0x01 << GPIO_MODER_MODER8_Pos));
-
-  // Set UART Modes as Alternate Function (Set 0b10 for bit pairs)
-  GPIOB->MODER |= ((0x02 << GPIO_MODER_MODER10_Pos) | 
-                   (0x02 << GPIO_MODER_MODER11_Pos));
-
-  // Set Alternate Function to be AF7 (USART)
-  // Clear AFSEL bits for 10 and 11
-  GPIOB->AFR[1] &= ~(GPIO_AFRH_AFSEL11_Msk | GPIO_AFRH_AFSEL10_Msk);
-  // Set mode for 10 and 11 to be alternate function 7 (0b111)
-  GPIOB->AFR[1] |= (0x07 << GPIO_AFRH_AFSEL11_Pos) | (0x07 << GPIO_AFRH_AFSEL10_Pos);
 
   // Enable Push-Pull Output Mode (Clear Relevant Bits)
   GPIOB->OTYPER &= ~(GPIO_OTYPER_OT1 | GPIO_OTYPER_OT8);
