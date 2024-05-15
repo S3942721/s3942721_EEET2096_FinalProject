@@ -189,7 +189,7 @@ void stop_TIM6(void);
 void stop_TIM7(void);
 
 // Handle inputs and outputs methods
-void handle_cooling_and_heating(void)
+void handle_cooling_and_heating(void);
 bool handle_fan(void);
 bool handle_light(void);
 void handle_outputs(void);
