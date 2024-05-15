@@ -1200,6 +1200,14 @@ void handle_cooling_and_heating(void)
   // UART control (heating_cooling_manual_override_timer_active), the automatic control should not resume.
 
   // Handle cooling logic based on the cooling input and temperature
+  // If override timer is active and expired
+  if (heating_cooling_manual_override_timer_active && manual_override_count >= 15)
+  {
+    // If manual override timer has expired, reset timer and resume automatic control
+    heating_cooling_manual_override_timer_active = false;
+    manual_override_count = 0;
+  }
+
   if (temperature_input >= 25.0)
   {
     // If temperature is above 25 degrees, turn off cooling and turn on heating
@@ -1212,7 +1220,8 @@ void handle_cooling_and_heating(void)
     cooling_output = true;
     heating_output = false;
   }
-  else
+  // If temperature is between 16 and 25 degrees and manual override timer is active and not expired
+  else if (heating_cooling_manual_override_timer_active && manual_override_count < 15)
   {
     // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
     if (cooling_input)
@@ -1224,6 +1233,26 @@ void handle_cooling_and_heating(void)
     {
       heating_output = !heating_output;
       cooling_output = !heating_output;
+    }
+  }
+  else
+  {
+    // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
+    if (cooling_input)
+    {
+      cooling_output = !cooling_output;
+      heating_output = !cooling_output;
+      // If cooling input is hit, start 15s timer
+      heating_cooling_manual_override_timer_active = true;
+      manual_override_count = 0;
+    }
+    if (heating_input)
+    {
+      heating_output = !heating_output;
+      cooling_output = !heating_output;
+      // If heating input is hit, start 15s timer
+      heating_cooling_manual_override_timer_active = true;
+      manual_override_count = 0;
     }
   }
 }
