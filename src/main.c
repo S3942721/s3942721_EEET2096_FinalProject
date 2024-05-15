@@ -668,11 +668,11 @@ void configure_GPIOA(void) //Cam (Sam - Bug fixes and documentation/formatting)
 										 (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED9_Pos) | 
 										 (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED10_Pos));
 
-	// Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
-	GPIOA->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD3_Pos) | 
-                                  ~(0x03 << GPIO_PUPDR_PUPD8_Pos) | 
-                                  ~(0x03 << GPIO_PUPDR_PUPD9_Pos) | 
-                                  ~(0x03 << GPIO_PUPDR_PUPD10_Pos));
+	// Clear Pull-Up-Pull Down Register (Pull-up)
+	GPIOA->PUPDR &= (unsigned int) (~(0x01 << GPIO_PUPDR_PUPD3_Pos) | 
+                                  ~(0x01 << GPIO_PUPDR_PUPD8_Pos) | 
+                                  ~(0x01 << GPIO_PUPDR_PUPD9_Pos) | 
+                                  ~(0x01 << GPIO_PUPDR_PUPD10_Pos));
 
 	// Set Output Data Register to TURN OFF LEDS by default
 	GPIOA->ODR |= (GPIO_ODR_OD3 | GPIO_ODR_OD8);
@@ -731,11 +731,11 @@ void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and docum
                      (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED10_Pos) | 
                      (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED11_Pos));
 
-  // Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
-  GPIOB->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD1_Pos) | 
-                                  ~(0x03 << GPIO_PUPDR_PUPD8_Pos) |
-                                  ~(0x03 << GPIO_PUPDR_PUPD10_Pos) |
-                                  ~(0x03 << GPIO_PUPDR_PUPD11_Pos));
+  // Clear Pull-Up-Pull Down Register (Pull-up)
+  GPIOB->PUPDR &= (unsigned int) (~(0x01 << GPIO_PUPDR_PUPD1_Pos) | 
+                                  ~(0x01 << GPIO_PUPDR_PUPD8_Pos) |
+                                  ~(0x01 << GPIO_PUPDR_PUPD10_Pos) |
+                                  ~(0x01 << GPIO_PUPDR_PUPD11_Pos));
   
   // Set Output Data Register to TURN OFF LEDS by default
   GPIOB->ODR |= (GPIO_ODR_OD1 | GPIO_ODR_OD8);
@@ -768,8 +768,8 @@ void configure_GPIOF(void)
 	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
 	GPIOF->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED8_Pos); 			// Bit 8 LED7
 	
-	// Clear Pull-Up-Pull Down Register (No pull-up, pull-down)
-	GPIOF->PUPDR &= (unsigned int) (~(0x03 << GPIO_PUPDR_PUPD8_Pos)); 				// Bit 8 LED7
+	// Clear Pull-Up-Pull Down Register (Pull-up)
+	GPIOF->PUPDR &= (unsigned int) (~(0x01 << GPIO_PUPDR_PUPD8_Pos)); 				// Bit 8 LED7
 	
 	// Set Output Data Register to TURN OFF LEDS by default
 	GPIOF->ODR |= GPIO_ODR_OD8;
