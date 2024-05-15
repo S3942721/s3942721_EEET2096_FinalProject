@@ -237,6 +237,7 @@ int main(void)
 	// Bring up the GPIO for the power regulators.
 	boardSupport_init();
 
+  // Configure the peripherals
   configure_RCC();
   configure_GPIOs();
   configure_Timers();
