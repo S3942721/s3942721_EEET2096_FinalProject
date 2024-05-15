@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "boardSupport.h"
 #include "main.h"
 
@@ -157,7 +158,7 @@ void configure_ADC(void);
 // UART Communication methods
 void transmit_UART(uint8_t data);
 void transmit_Status_Packet(char* data);
-uint8_t receive_UART(void);
+int8_t receive_UART(void);
 void receive_Status_Packet(void);
 char* get_outgoing_string(void);
 
@@ -190,8 +191,8 @@ bool handle_light(void);
 void handle_outputs(void);
 
 // Helper methods
-uint16_t count_from_rate_TIM6(float rate);
-uint16_t count_from_delay_ms_TIM7(int delay_ms);
+unsigned short count_from_rate_TIM6(float rate);
+unsigned short count_from_delay_ms_TIM7(int delay_ms);
 
 // Global Variables
 bool cooling_output;
@@ -213,6 +214,8 @@ bool light_switch;
 float temperature_input;
 int adc_temperature;
 int incomming_string_index;
+
+bool status_packet_recieved;
 
 int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
 
@@ -256,15 +259,12 @@ int main(void)
   temperature_input = 0.0;
   adc_temperature = 0;
 
-  // Character array for UART communication, one for incomming string and one for outgoing string
-  incomming_string = {0};
-  outgoing_string = {0};
   incomming_string_index = 0;
 
   while (1)
   { 
     // If 1Hz timer has expired then transmit data
-    if (TIM6->SR & TIM_SR_UIF == 0x01)
+    if ((TIM6->SR & TIM_SR_UIF) == 0x01)
     {
       transmit_Status_Packet(outgoing_string);
 
@@ -295,7 +295,7 @@ int main(void)
 
       // Reset status packet flag and clear current status string
       status_packet_recieved = false;
-      incomming_string = {0};
+      incomming_string[0] = '\0';
       incomming_string_index = 0;
     }
 
@@ -309,12 +309,18 @@ int main(void)
     fan_output = handle_fan();
     light_output = handle_light();
 
-    outgoing_string = get_outgoing_string();
+    // Receive array of characters to be transmitted
+    char* outgoing_string_ptr = get_outgoing_string();
+
+    // Assign outgoing string to the outgoing buffer
+    for (int i = 0; i < OUTGOING_BUFFER_SIZE; i++)
+    {
+      outgoing_string[i] = outgoing_string_ptr[i];
+    }
+
     // Update GPIO Outputs
     handle_outputs();
   }
-
-  return 0;
 }
 
 /**
@@ -392,8 +398,8 @@ void configure_ADC(void)
   ADC3->SQR1 &= ~(ADC_SQR1_L_Msk);
 
   // Set sample time to 56 cycles
-  ADC3->SMPR1 &= ~(ADC_SMPR1_SMP8_Msk);
-  ADC3->SMPR1 |= (0x03 << ADC_SMPR1_SMP8_Pos);
+  ADC3->SMPR2 &= ~(ADC_SMPR2_SMP8_Msk); 
+  ADC3->SMPR2 |= (0x03 << ADC_SMPR2_SMP8_Pos);
 
   // Enable ADC3
   ADC3->CR2 |= ADC_CR2_ADON;
@@ -442,13 +448,13 @@ int8_t receive_UART(void)
   // Assume there is a character to be recieved
   // Recieve and return the character
   // This function will be called when a character is recieved on the USART and will only read one character to avoid being hung up in this method
-  int8_t incomming_character = -1
+  int8_t incomming_character = -1;
 
   // Check if the recieve buffer is not empty
   if ((USART3->SR & USART_SR_RXNE) == 0x01)
   {
     // Read the incomming character
-    incomming_character = USART3->DR;
+    incomming_character = (volatile int8_t)USART3->DR;
   }
   return incomming_character;
 }
@@ -467,15 +473,15 @@ void receive_Status_Packet(void)
   // This will incrementally add the latest character to the buffer and check if the buffer is full before signalling that a frame has been recieved
 
   // Recieve incomming character
-  char incomming_character = receive_UART();
+  int8_t incomming_character = receive_UART();
 
   // Check if the incomming character is valid and append to the incomming string buffer
-  if (incomming_string_index < INCOMMING_BUFFER_SIZE) && incomming_character != -1)
+  if ((incomming_string_index < INCOMMING_BUFFER_SIZE) && (incomming_character != -1))
   {
     // Check if character is valid and append to the incomming string buffer
     if ((incomming_string_index == 0 && incomming_character == ASCII_AT) || (incomming_string_index == 1 && (incomming_character & 0xF0) == 0x30) || (incomming_string_index == 2 && incomming_character == ASCII_CR) || (incomming_string_index == 3 && incomming_character == ASCII_LF))
     {
-      incomming_string[incomming_string_index] = incomming_character;
+      incomming_string[incomming_string_index] = (char)incomming_character;
       incomming_string_index++;
     }
   }
@@ -500,16 +506,13 @@ char *get_outgoing_string(void)
   // Temperature is a float, convert to string and split characters into char* array
   // Control State is a byte, convert to string
 
-  // Create a string to be transmitted
-  char* outgoing_string = {0};
-
   // Set header character
   outgoing_string[0] = ASCII_AT;
 
   // Set temperature characters
   // Convert temperature to string
   char* temperature_string = {0};
-  sprintf(temperature_string, "%+05.1f", get_temperature());
+  sprintf(temperature_string, "%+05.1f", (double)get_temperature());
 
   // Set temperature characters
   for (int i = 0; i < 5; i++)
@@ -925,7 +928,7 @@ void set_light(bool on)
 float get_temperature(void)
 {
   // 0-4095 to -5 to 45 by linear relationship between ADC and temperature 0 ADC is -5 and 4095 ADC is 45
-  return float((get_ADC_temperature(); / 4095.0) * 50.0 - 5.0);
+  return (float)((get_ADC_temperature() / 4095.0) * 50.0 - 5.0);
 }
 
 /**
