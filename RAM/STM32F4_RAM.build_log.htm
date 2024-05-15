@@ -27,16 +27,13 @@ Project File Date:  05/15/2024
 <h2>Output:</h2>
 *** Using Compiler 'V6.21', folder: 'C:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'STM32F4 RAM'
+creating list file for stm32f4xx_it.c...
+creating list file for boardSupport.c...
+creating list file for system_stm32f4xx.c...
 creating list file for gpioControl.c...
 creating list file for main.c...
-creating list file for boardSupport.c...
-creating list file for stm32f4xx_it.c...
-creating preprocessor file for stm32f4xx_it.c...
-creating preprocessor file for gpioControl.c...
-creating preprocessor file for main.c...
 creating preprocessor file for boardSupport.c...
-compiling stm32f4xx_it.c...
-compiling boardSupport.c...
+creating preprocessor file for main.c...
 src/main.c(209): warning: no previous extern declaration for non-static variable 'fan_timer_count' [-Wmissing-variable-declarations]
   209 | int fan_timer_count = 0; // Time count for 20s fan off timer
       |     ^
@@ -61,43 +58,30 @@ src/main.c(224): warning: no previous extern declaration for non-static variable
 src/main.c(224): note: declare 'static' if the variable is not intended to be used outside of this translation unit
   224 | char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
       | ^
-src/main.c(271): error: call to undeclared function 'count_fromt_rate_TIM6'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
-  271 |       uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
-      |                              ^
-src/main.c(271): note: did you mean 'count_from_rate_TIM6'?
-src/main.c(194): note: 'count_from_rate_TIM6' declared here
-  194 | unsigned short count_from_rate_TIM6(float rate);
+src/main.c(275): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+  275 |       uint16_t timer_Count = count_from_rate_TIM6(1.0);
       |                ^
-src/main.c(271): warning: implicit conversion loses integer precision: 'int' to 'uint16_t' (aka 'unsigned short') [-Wimplicit-int-conversion]
-  271 |       uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
-      |                ~~~~~~~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~
-src/main.c(271): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  271 |       uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
-      |                ^
-src/main.c(288): warning: use of logical '&&' with constant operand [-Wconstant-logical-operand]
-  288 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(292): warning: use of logical '&&' with constant operand [-Wconstant-logical-operand]
+  292 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
       |                                                                                              ^  ~~~~
-src/main.c(288): note: use '&' for a bitwise operation
-  288 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(292): note: use '&' for a bitwise operation
+  292 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
       |                                                                                              ^~
       |                                                                                              &
-src/main.c(288): note: remove constant to silence this warning
-  288 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(292): note: remove constant to silence this warning
+  292 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
       |                                                                                              ^~~~~~~
-src/main.c(313): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  313 |     char* outgoing_string_ptr = get_outgoing_string();
+src/main.c(317): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+  317 |     char* outgoing_string_ptr = get_outgoing_string();
       |           ^
-src/main.c(288): warning: result of comparison of constant 48 with boolean expression is always false [-Wtautological-constant-out-of-range-compare]
-  288 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(292): warning: result of comparison of constant 48 with boolean expression is always false [-Wtautological-constant-out-of-range-compare]
+  292 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
       |                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~
-src/main.c(525): warning: implicit conversion loses integer precision: 'int' to 'char' [-Wimplicit-int-conversion]
-  525 |   outgoing_string[6] = 0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output;
-      |                      ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
-src/main.c(514): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  514 |   char* temperature_string = {0};
+src/main.c(518): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+  518 |   char* temperature_string = {0};
       |         ^
-src/main.c(1954): warning: no newline at end of file [-Wnewline-eof]
- 1954 | */
+src/main.c(1958): warning: no newline at end of file [-Wnewline-eof]
+ 1958 | */
       |   ^
 src/main.c(198): warning: no previous extern declaration for non-static variable 'cooling_output' [-Wmissing-variable-declarations]
   198 | bool cooling_output;
@@ -234,14 +218,71 @@ src/main.c(218): note: declare 'static' if the variable is not intended to be us
 C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
    15 |     #define bool _Bool
       |                  ^
-28 warnings and 1 error generated.
+src/main.c(292): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  292 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+      |                                                                          ^~~~~~~~~~~~~~~~
+src/main.c(295): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  295 |       cooling_input = incomming_string[1] & 0x10; // Clear all but 4th bit
+      |                       ^~~~~~~~~~~~~~~~
+src/main.c(296): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  296 |       heating_input = incomming_string[1] & 0x20; // Clear all but 5th bit
+      |                       ^~~~~~~~~~~~~~~~
+src/main.c(297): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  297 |       fan_input = incomming_string[1] & 0x40; // Clear all but 6th bit
+      |                   ^~~~~~~~~~~~~~~~
+src/main.c(298): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  298 |       light_input = incomming_string[1] & 0x80; // Clear all but 7th bit
+      |                     ^~~~~~~~~~~~~~~~
+src/main.c(322): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  322 |       outgoing_string[i] = outgoing_string_ptr[i];
+      |       ^~~~~~~~~~~~~~~
+src/main.c(322): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  322 |       outgoing_string[i] = outgoing_string_ptr[i];
+      |                            ^~~~~~~~~~~~~~~~~~~
+src/main.c(346): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  346 |         GPIOB->AFR[1] &= ~(GPIO_AFRH_AFSEL11_Msk | GPIO_AFRH_AFSEL10_Msk);
+      |         ^~~~~~~~~~
+./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
+ 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+      |                                     ^
+src/main.c(347): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  347 |         GPIOB->AFR[1] |= (0x07 << GPIO_AFRH_AFSEL11_Pos) | (0x07 << GPIO_AFRH_AFSEL10_Pos); // Set mode for 10 and 11 to be alternate function 7 (0b111)
+      |         ^~~~~~~~~~
+./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
+ 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+      |                                     ^
+src/main.c(440): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  440 |       transmit_UART(data[i]);
+      |                     ^~~~
+src/main.c(488): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  488 |       incomming_string[incomming_string_index] = (char)incomming_character;
+      |       ^~~~~~~~~~~~~~~~
+src/main.c(524): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  524 |     outgoing_string[i + 1] = temperature_string[i];
+      |     ^~~~~~~~~~~~~~~
+src/main.c(524): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  524 |     outgoing_string[i + 1] = temperature_string[i];
+      |                              ^~~~~~~~~~~~~~~~~~
+src/main.c(529): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  529 |   outgoing_string[6] = (char)(0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
+      |   ^~~~~~~~~~~~~~~
+src/main.c(715): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  715 |   GPIOB->AFR[1] &= ~(GPIO_AFRH_AFSEL11_Msk | GPIO_AFRH_AFSEL10_Msk);
+      |   ^~~~~~~~~~
+./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
+ 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+      |                                     ^
+src/main.c(717): warning: unsafe buffer access [-Wunsafe-buffer-usage]
+  717 |   GPIOB->AFR[1] |= (0x07 << GPIO_AFRH_AFSEL11_Pos) | (0x07 << GPIO_AFRH_AFSEL10_Pos);
+      |   ^~~~~~~~~~
+./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
+ 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
+      |                                     ^
+42 warnings generated.
 compiling main.c...
-assembling startup_stm32f439xx.s...
-creating list file for system_stm32f4xx.c...
-creating preprocessor file for system_stm32f4xx.c...
-compiling gpioControl.c...
-compiling system_stm32f4xx.c...
-".\RAM\STM32F4_RAM.axf" - 1 Error(s), 28 Warning(s).
+linking...
+Program Size: Code=9628 RO-data=484 RW-data=4 ZI-data=1084  
+".\RAM\STM32F4_RAM.axf" - 0 Error(s), 42 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -267,13 +308,12 @@ Package Vendor: Keil
    * Component: ARM::CMSIS:CORE@5.6.0
 
    * Component: Keil::Device:Startup@2.6.3
-      Source file:   MDK/Device/Source/ARM/STM32F42xxx_43xxx_OPT.s
       Source file:   MDK/Device/Source/ARM/STM32F4xx_OTP.s
       Include file:  Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h
+      Source file:   MDK/Device/Source/ARM/STM32F42xxx_43xxx_OPT.s
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/arm/startup_stm32f439xx.s
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
-Target not created.
-Build Time Elapsed:  00:00:02
+Build Time Elapsed:  00:00:03
 </pre>
 </body>
 </html>

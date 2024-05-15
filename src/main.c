@@ -272,7 +272,7 @@ int main(void)
     {
       transmit_Status_Packet(outgoing_string);
 
-      uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
+      uint16_t timer_Count = count_from_rate_TIM6(1.0);
       start_TIM6(timer_Count); // Restart timer
 
       // Increment global timer
@@ -526,7 +526,7 @@ char *get_outgoing_string(void)
 
   // Set control state character
   // Control State is a byte, convert to string
-  outgoing_string[6] = 0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output;
+  outgoing_string[6] = (char)(0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
 
   return outgoing_string;
 }
@@ -832,7 +832,7 @@ void handle_outputs(void)
  * @param rate The desired rate in Hz.
  * @return The count value for TIM6.
  */
-uint16_t count_from_rate_TIM6(float rate)
+unsigned short count_from_rate_TIM6(float rate)
 {
   return (uint16_t)(TIM6_RATE / rate);
 }
@@ -1162,7 +1162,7 @@ bool handle_light(void) //Cam (Sam - fix bug in function and add functionality)
 }
 
 /*
-COMMENTS FOR LLM CONEXT
+COMMENTS FOR REPORT CONEXT
 
 EEET2096 – Embedded System Design and Implementation – Laboratory Project
 SCHOOL OF ENGINEERING
