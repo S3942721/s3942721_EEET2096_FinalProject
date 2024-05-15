@@ -21,10 +21,12 @@
 #define TIM6_RATE CPU_CLOCK/(TIM6_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 #define TIM7_RATE CPU_CLOCK/(TIM7_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 
-#define CHAR_READ_TIMEOUT 3 // Max number of characters to read before timeout
 #define USART_TIMEOUT 1000 // timeout for USART
 #define ADC_CONVERSION_TIMEOUT 1000 // timeout for ADC conversion
 #define DEFAULT_TIMEOUT 2 // 2s timeout for general use
+
+#define INCOMMING_BUFFER_SIZE 3 // Size of the buffer for incomming data from UART
+#define OUTGOING_BUFFER_SIZE 9 // Size of the buffer for outgoing data via UART
 
 // Define masks for ALL LEDs on the board
 #define GPIOA_LED_MASK (GPIO_ODR_OD3 | GPIO_ODR_OD8 | GPIO_ODR_OD9 | GPIO_ODR_OD10)
@@ -154,9 +156,10 @@ void configure_ADC(void);
 
 // UART Communication methods
 void transmit_UART(uint8_t data);
-void transmit_Status_Packet(void);
+void transmit_Status_Packet(char* data);
 uint8_t receive_UART(void);
 void receive_Status_Packet(void);
+char* get_outgoing_string(void);
 
 // Device Control methods
 void set_cooling(bool on);
@@ -209,9 +212,13 @@ bool fan_switch;
 bool light_switch;
 float temperature_input;
 int adc_temperature;
+int incomming_string_index;
 
 int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
 
+// Character array for UART communication, one for incomming string and one for outgoing string
+char incomming_string[INCOMMING_BUFFER_SIZE] = {0};
+char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
 
 /**
  * @brief Main function of the program.
@@ -249,15 +256,17 @@ int main(void)
   temperature_input = 0.0;
   adc_temperature = 0;
 
-  uint8_t status_frame = 0x00;  // A valid status frame will never be 0x00
-                                // it will have 0b0011 in the first 4 bits therefore 0x3n is a valid frame where n is the status bits
+  // Character array for UART communication, one for incomming string and one for outgoing string
+  incomming_string = {0};
+  outgoing_string = {0};
+  incomming_string_index = 0;
 
   while (1)
-  {
+  { 
     // If 1Hz timer has expired then transmit data
     if (TIM6->SR & TIM_SR_UIF == 0x01)
     {
-      transmit_Status_Packet();
+      transmit_Status_Packet(outgoing_string);
 
       uint16_t timer_Count = count_fromt_rate_TIM6(1.0);
       start_TIM6(timer_Count); // Restart timer
@@ -272,20 +281,22 @@ int main(void)
       }
     }
 
-    // If character is received on UART then recieve and process status packet
-    if ((USART3->SR & USART_SR_RXNE) == 0x01)
-    {
-      status_frame = receive_Status_Packet();
+    // Recieve/Check for USART input
+    receive_Status_Packet();
 
-      // Check if status frame is valid (First 4 bits are 0b0011)
-      if ((status_frame & 0xF0) == 0x30)
-      {
-        // Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
-        cooling_input = status_frame & 0x10; // Clear all but 4th bit
-        heating_input = status_frame & 0x20; // Clear all but 5th bit
-        fan_input = status_frame & 0x40; // Clear all but 6th bit
-        light_input = status_frame & 0x80; // Clear all but 7th bit
-      }
+    // Check if status frame is recieved and it is valid (First 4 bits in the status frame are 0b0011 and @ is the header character)
+    if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+    {
+      // Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
+      cooling_input = incomming_string[1] & 0x10; // Clear all but 4th bit
+      heating_input = incomming_string[1] & 0x20; // Clear all but 5th bit
+      fan_input = incomming_string[1] & 0x40; // Clear all but 6th bit
+      light_input = incomming_string[1] & 0x80; // Clear all but 7th bit
+
+      // Reset status packet flag and clear current status string
+      status_packet_recieved = false;
+      incomming_string = {0};
+      incomming_string_index = 0;
     }
 
     // Read Switches
@@ -298,6 +309,7 @@ int main(void)
     fan_output = handle_fan();
     light_output = handle_light();
 
+    outgoing_string = get_outgoing_string();
     // Update GPIO Outputs
     handle_outputs();
   }
@@ -357,7 +369,7 @@ void configure_USART3(void)
 void configure_ADC(void)
 {
   // Assuming RCC is already configured and enabled for ADC3
-  // ADC3 is on PF10
+  // ADC3 is on PF10 Channel 8 (Page 56/241 of reference manual)
 
   // Configure to run in single channel mode and in single conversion and sample mode
   // Prescaler is set to /8
@@ -365,11 +377,26 @@ void configure_ADC(void)
   // Conversion time is set to 56 cycles (This is the minimum value for 12-bit resolution)
   // Data alignment is set to right
   
-  // TODO: Refer to notes in the word document
+  // Disable battery sensing channel
+  ADC123_COMMON->CCR &= ~(ADC_CCR_VBATE);
 
-  // Set ADC3 to be in single channel mode
-  ADC3->CR1 &= ~(ADC_CR1_SCAN);
+  // Disable scan mode and set resolution to 12 bits
+  ADC3->CR1 &= ~(ADC_CR1_SCAN | (0x00 << ADC_CR1_RES_Pos));
 
+  // Set the data alignment to right and set single mode for conversion and sample
+  ADC3->CR2 &= ~(ADC_CR2_ALIGN | ADC_CR2_CONT | ADC_CR2_SWSTART);
+
+  // Set to select channel 8 (PF10) for "temperature" (Potentiometer) sensing
+  ADC3->SQR3 &= ~(ADC_SQR3_SQ1_Msk);
+  ADC3->SQR3 |= (0x08 << ADC_SQR3_SQ1_Pos);
+  ADC3->SQR1 &= ~(ADC_SQR1_L_Msk);
+
+  // Set sample time to 56 cycles
+  ADC3->SMPR1 &= ~(ADC_SMPR1_SMP8_Msk);
+  ADC3->SMPR1 |= (0x03 << ADC_SMPR1_SMP8_Pos);
+
+  // Enable ADC3
+  ADC3->CR2 |= ADC_CR2_ADON;
 }
 
 /**
@@ -379,15 +406,30 @@ void configure_ADC(void)
  */
 void transmit_UART(uint8_t data)
 {
-  // TODO: Implement this
+  // Wait for the transmit buffer to be empty or timeout (TIMEOUT NOT YET IMPLEMENTED)
+  while ((USART3->SR & USART_SR_TXE) == 0x00)
+  {
+    // Wait for the transmit buffer to be empty
+  }
+
+  // Transmit the data
+  USART3->DR = data;
 }
 
 /**
- * @brief Transmits a status packet via UART.
+ * @brief Transmits a status packet via UART from character array.
  */
-void transmit_Status_Packet(void)
+void transmit_Status_Packet(char* data)
 {
-  // TODO: Implement this
+  // Check if data is valid @ is the header character
+  if (data[0] == ASCII_AT)
+  {
+    // Transmit the data
+    for (int i = 0; i < OUTGOING_BUFFER_SIZE; i++)
+    {
+      transmit_UART(data[i]);
+    }
+  }
 }
 
 /**
@@ -395,10 +437,20 @@ void transmit_Status_Packet(void)
  * 
  * @return The received data.
  */
-uint8_t receive_UART(void)
+int8_t receive_UART(void)
 {
-  // TODO: Implement this
-  return 0;
+  // Assume there is a character to be recieved
+  // Recieve and return the character
+  // This function will be called when a character is recieved on the USART and will only read one character to avoid being hung up in this method
+  int8_t incomming_character = -1
+
+  // Check if the recieve buffer is not empty
+  if ((USART3->SR & USART_SR_RXNE) == 0x01)
+  {
+    // Read the incomming character
+    incomming_character = USART3->DR;
+  }
+  return incomming_character;
 }
 
 /**
@@ -406,7 +458,70 @@ uint8_t receive_UART(void)
  */
 void receive_Status_Packet(void)
 {
-  // TODO: Implement this
+  // Assume there is a frame to be recieved and processed
+  // Read the single character, append this to the incomming string buffer
+  // If the buffer is full then process the frame by setting 
+  
+  // Read the incomming character and append to the incomming string buffer based on the current position in the string
+  // This function will be called when a character is recieved on the USART and will only read one character to avoid being hung up in this method
+  // This will incrementally add the latest character to the buffer and check if the buffer is full before signalling that a frame has been recieved
+
+  // Recieve incomming character
+  char incomming_character = receive_UART();
+
+  // Check if the incomming character is valid and append to the incomming string buffer
+  if (incomming_string_index < INCOMMING_BUFFER_SIZE) && incomming_character != -1)
+  {
+    // Check if character is valid and append to the incomming string buffer
+    if ((incomming_string_index == 0 && incomming_character == ASCII_AT) || (incomming_string_index == 1 && (incomming_character & 0xF0) == 0x30) || (incomming_string_index == 2 && incomming_character == ASCII_CR) || (incomming_string_index == 3 && incomming_character == ASCII_LF))
+    {
+      incomming_string[incomming_string_index] = incomming_character;
+      incomming_string_index++;
+    }
+  }
+  else
+  {
+    // Set flag to process the frame
+    status_packet_recieved = true;
+  }
+}
+
+/**
+ * @brief Gets the string to be transmitted via UART.
+ */
+char *get_outgoing_string(void)
+{
+  // Format the string to be transmitted based upon the current state of the system
+  // 1 Header character "@" - 0x40 (ASCII_AT)
+  // 5 Temperature characters (E.g. +19.2 or -03.9)
+  // 1 Control State Character (0b0011abcd) (a: Cooling, b: Heating, c: Fan, d: Light)
+
+  // Set header character at the start of the string (0)
+  // Temperature is a float, convert to string and split characters into char* array
+  // Control State is a byte, convert to string
+
+  // Create a string to be transmitted
+  char* outgoing_string = {0};
+
+  // Set header character
+  outgoing_string[0] = ASCII_AT;
+
+  // Set temperature characters
+  // Convert temperature to string
+  char* temperature_string = {0};
+  sprintf(temperature_string, "%+05.1f", get_temperature());
+
+  // Set temperature characters
+  for (int i = 0; i < 5; i++)
+  {
+    outgoing_string[i + 1] = temperature_string[i];
+  }
+
+  // Set control state character
+  // Control State is a byte, convert to string
+  outgoing_string[6] = 0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output;
+
+  return outgoing_string;
 }
 
 /**
@@ -904,7 +1019,7 @@ void start_TIM7(uint16_t count)
  */
 void wait_For_TIM6(void)
 {
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout)
+  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
   int initial_global = global_timer;
   while ((((volatile int)(TIM6->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
 }
@@ -914,7 +1029,7 @@ void wait_For_TIM6(void)
  */
 void wait_For_TIM7(void)
 {
-  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout)
+  // Wait for timer to finish or for the global timer to overflow twice (Xs timeout) (TIMEOUT NOT USED IN FINAL IMPLEMENTATION AS IT REQUIRES INTERRUPT 1Hz TIMER)
   int initial_global = global_timer;
   while ((((volatile int)(TIM7->SR & TIM_SR_UIF)) == 0) && (global_timer - initial_global < DEFAULT_TIMEOUT));
 }
