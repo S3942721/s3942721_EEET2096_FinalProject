@@ -528,6 +528,8 @@ char *get_outgoing_string(void)
   // 1 Header character "@" - 0x40 (ASCII_AT)
   // 5 Temperature characters (E.g. +19.2 or -03.9)
   // 1 Control State Character (0b0011abcd) (a: Cooling, b: Heating, c: Fan, d: Light)
+  // 1 CR character
+  // 1 LF character
 
   // Set header character at the start of the string (0)
   // Temperature is a float, convert to string and split characters into char* array
@@ -550,6 +552,12 @@ char *get_outgoing_string(void)
   // Set control state character
   // Control State is a byte, convert to string
   outgoing_string[6] = (char)(0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
+
+  // Set CR character
+  outgoing_string[7] = ASCII_CR;
+
+  // Set LF character
+  outgoing_string[8] = ASCII_LF;
 
   return outgoing_string;
 }
@@ -1208,7 +1216,7 @@ bool temperature_changed()
 }
 
 /**
- * @brief Handles the cooling logic.
+ * @brief Handles the cooling/heating logic.
  * 
  * This function checks the cooling input and updates the cooling and heating outputs accordingly.
  * If the cooling input is true, the cooling output is toggled and the heating output is set to the opposite value.
