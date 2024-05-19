@@ -64,7 +64,7 @@
       - Timer for 50ms button debounce/registration timer
 		- U(S)ART
 		- ADC
-      - ADC1 (Temperature Sensor) [Potentiometer on PF10]
+      - ADC3 (Temperature Sensor) [Potentiometer on PF10]
 
 	Transmit UART
 		- 7 body characters
@@ -373,7 +373,7 @@ void configure_USART3(void)
 	USART3->CR1 &= ~(USART_CR1_OVER8);
 	
 	// Set USART Baud Rate
-	USART3->BRR &= 0xFFF000; // Clear Baud Rate register
+	USART3->BRR &= 0xFFFF0000; // Clear Baud Rate register
 	USART3->BRR |= (0x88 << USART_BRR_DIV_Mantissa_Pos | 0x0C << USART_BRR_DIV_Fraction_Pos); // Set Baud rate ~19200 (Actually 19195) (136.75 -> 136 (0x88) and 0.75 * 16 (0xc))
 	
 	// Set numberof bits per transfer to 8-bits (By clearing M)
@@ -637,11 +637,11 @@ void configure_RCC(void) //Cam + Sam (Minor fixes and documentation)
 	// Enable RCC for GPIOA, GPIOB, and GPIOF
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOFEN;					// Config to enable GPIOA, B, and F
 	RCC->AHB1RSTR |= RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST;		// Reset control interface
-	// Enable RCC for ADC1
+	// Enable RCC for ADC3
   RCC->APB2ENR |= RCC_APB2ENR_ADC3EN;																												// Enable RCC for ADC 3
 	RCC->APB2RSTR |= RCC_APB2RSTR_ADCRST;																											// Reset control interface
 	__asm("nop");	__asm("nop");
-	// Clear reset bits for Timer 6, Timer 7, USART3, GPIOA, GPIOB, GPIOF, and ADC1
+	// Clear reset bits for Timer 6, Timer 7, USART3, GPIOA, GPIOB, GPIOF, and ADC3
   RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM6RST | RCC_APB1RSTR_TIM7RST | RCC_APB1RSTR_USART3RST);		//Clear reset bit
 	RCC->AHB1RSTR &= ~(RCC_AHB1RSTR_GPIOARST | RCC_AHB1RSTR_GPIOBRST | RCC_AHB1RSTR_GPIOFRST);//Clear reset	bit
 	RCC->APB2RSTR &= ~(RCC_APB2RSTR_ADCRST);
@@ -958,15 +958,15 @@ float get_temperature(void)
 }
 
 /**
- * @brief Gets the ADC temperature reading. (0-4095) from (ADC1 - PF10)
+ * @brief Gets the ADC temperature reading. (0-4095) from (ADC3 Channel 8  - PF10)
  * 
  * @return The ADC temperature reading.
  */
 int get_ADC_temperature(void)
 {
-  // ADC1 is on PF10
-  // Read ADC1 and return the value (Mask to only keep the 12 bits of the ADC value)
-  return (int)(ADC1->DR & 0x0FFF);
+  // ADC3 is on PF10
+  // Read ADC3 and return the value (Mask to only keep the 12 bits of the ADC value)
+  return (int)(ADC3->DR & 0x0FFF);
 }
 
 /**
