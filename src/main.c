@@ -16,8 +16,8 @@
 
 // Timer Constants
 #define CPU_CLOCK 84000000 // 84MHz
-#define TIM6_PRESCALER 1200 // TODO: Calculate this value
-#define TIM7_PRESCALER 1200 // TODO: Calculate this value
+#define TIM6_PRESCALER 2560 // TODO: Write calculations in report
+#define TIM7_PRESCALER 128 // TODO: Write calculations in report
 #define DEFAULT_TIMER_COUNT 100
 #define TIM6_RATE CPU_CLOCK/(TIM6_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 #define TIM7_RATE CPU_CLOCK/(TIM7_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
@@ -26,7 +26,7 @@
 #define ADC_CONVERSION_TIMEOUT 1000 // timeout for ADC conversion
 #define DEFAULT_TIMEOUT 2 // 2s timeout for general use
 
-#define INCOMMING_BUFFER_SIZE 3 // Size of the buffer for incomming data from UART
+#define INCOMMING_BUFFER_SIZE 4 // Size of the buffer for incomming data from UART 
 #define OUTGOING_BUFFER_SIZE 9 // Size of the buffer for outgoing data via UART
 
 // Define masks for ALL LEDs on the board
@@ -357,9 +357,9 @@ void configure_USART3(void)
 {
   // TODO: Verify this configuration with requirements
 
-	// UART is configured at 19200bps, 8 data bits, No Parity, 1 stop bit
+	// UART is configured at 38,400bps, 8 data bits, No Parity, 1 stop bit
 	// UART APB1 Bus Clock is 42MHz
-	// Baud Rate required is 136.75
+	// Baud Rate required is 68.375
 	
 	// Configure GPIOB MODER for alternate function mode
 	GPIOB->MODER &= ~(GPIO_MODER_MODE11_Msk | GPIO_MODER_MODE10_Msk);		// Clear MODE already set for 10 and 11
@@ -374,7 +374,7 @@ void configure_USART3(void)
 	
 	// Set USART Baud Rate
 	USART3->BRR &= 0xFFFF0000; // Clear Baud Rate register
-	USART3->BRR |= (0x88 << USART_BRR_DIV_Mantissa_Pos | 0x0C << USART_BRR_DIV_Fraction_Pos); // Set Baud rate ~19200 (Actually 19195) (136.75 -> 136 (0x88) and 0.75 * 16 (0xc))
+	USART3->BRR |= (0x44 << USART_BRR_DIV_Mantissa_Pos | 0x06 << USART_BRR_DIV_Fraction_Pos); // Set Baud rate
 	
 	// Set numberof bits per transfer to 8-bits (By clearing M)
 	USART3->CR1 &= ~(USART_CR1_M);
@@ -578,18 +578,21 @@ void configure_TIM6(void)
 	TIM6->CNT &= ~(TIM_CNT_CNT_Msk);	// Clear count register
 	TIM6->ARR &= ~(TIM_ARR_ARR_Msk);	// Clear autoreload register
 	
-	// Set OPM to on and ARPE
-	TIM6->CR1 |= (TIM_CR1_ARPE | TIM_CR1_OPM);
-	
 	// Set Prescaler
 	TIM6->PSC |= (TIM6_PRESCALER << TIM_PSC_PSC_Pos);				// Divide APB1 Clock by TIM6PRESCALER + 1
 																													// Thus, at one cycle it will be TIM6RATE Hz (Assuming 82MHz of APB1)
-
 	TIM6->ARR |= (DEFAULT_TIMER_COUNT << TIM_ARR_ARR_Pos); 	// Initialise auto-reload register with default value (what count will auto reload)
 
+	// Set OPM to on and ARPE (TODO: ARPE not touched)
+	TIM6->CR1 |= (TIM_CR1_OPM);
+	
+	// Enable timer
+	TIM6->CR1 |= (TIM_CR1_CEN);
+	
 	// Enable timer for one cycle to clear and reload psc buffer
-	start_TIM6(DEFAULT_TIMER_COUNT);
-	wait_For_TIM6();
+	//start_TIM6(DEFAULT_TIMER_COUNT);
+	
+	wait_For_TIM6(); // FIXME: Doesn't expire
 	stop_TIM6();
 }
 
@@ -599,7 +602,7 @@ void configure_TIM6(void)
 void configure_TIM7(void)
 {
   // Ensure timer is off and all configurations are reset
-	TIM7->CR1 &= ~(TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_UDIS | TIM_CR1_CEN);				
+	TIM7->CR1 &= ~(TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_UDIS | TIM_CR1_CEN);
 	
 	// Disable TIM7 interrupts
 	TIM7->DIER &= ~(TIM_DIER_UIE);
@@ -619,9 +622,9 @@ void configure_TIM7(void)
 	TIM7->ARR |= (DEFAULT_TIMER_COUNT << TIM_ARR_ARR_Pos); 	// Initialise auto-reload register with default value (what count will auto reload)
 
 	// Enable timer for one cycle to clear and reload psc buffer
-	start_TIM6(DEFAULT_TIMER_COUNT);
-	wait_For_TIM6();
-	stop_TIM6();
+	start_TIM7(DEFAULT_TIMER_COUNT);
+	wait_For_TIM7(); // FIXME: Doesn't expire
+	stop_TIM7();
 }
 
 /**
@@ -1096,7 +1099,7 @@ bool get_light_switch_gpio(void)
 bool TIM6_expired(void)
 {
   // Return if timer expired and clear expiration flag
-  bool expired = (TIM6->SR & TIM_SR_UIF) == 0x01;
+  bool expired = (TIM6->SR & TIM_SR_UIF);
   // Clear UIF overflow flag
   TIM6->SR &= ~(TIM_SR_UIF_Msk);
   return expired;
@@ -1109,7 +1112,7 @@ bool TIM6_expired(void)
 bool TIM7_expired(void)
 {
   // Return if timer expired and clear expiration flag
-  bool expired = (TIM7->SR & TIM_SR_UIF) == 0x01;
+  bool expired = (TIM7->SR & TIM_SR_UIF);
   // Clear UIF overflow flag
   TIM7->SR &= ~(TIM_SR_UIF_Msk);
   return expired;
