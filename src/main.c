@@ -286,7 +286,17 @@ int main(void)
   fan_timer_active = false;
   heating_cooling_manual_override_timer_active = false;
 	
-	
+	// DEBUG
+	//USART3->DR = 0x40;
+	// Release all switches
+	//GPIOB->IDR |= GPIO_IDR_ID1;        // fan switch
+	//GPIOA->IDR |= GPIO_IDR_ID10;    // light intensity switch
+	//GPIOA->IDR |= GPIO_IDR_ID9;        // light switch
+	// Set TXE, RXNE and TC to 1
+	//USART3->SR |= (USART_SR_RXNE | USART_SR_TXE | USART_SR_TC);
+	//// Set USART data register to '@'
+	//USART3->DR = 0x40;
+	// /DEBUG
 
   while (1)
   { 

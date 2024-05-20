@@ -27,265 +27,87 @@ Project File Date:  05/15/2024
 <h2>Output:</h2>
 *** Using Compiler 'V6.21', folder: 'C:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'STM32F4 RAM'
-creating list file for main.c...
-creating list file for stm32f4xx_it.c...
+assembling startup_stm32f439xx.s...
 creating list file for system_stm32f4xx.c...
-creating list file for gpioControl.c...
+creating list file for stm32f4xx_it.c...
 creating list file for boardSupport.c...
-creating preprocessor file for main.c...
+creating list file for main.c...
+creating list file for gpioControl.c...
+creating preprocessor file for system_stm32f4xx.c...
+creating preprocessor file for gpioControl.c...
 creating preprocessor file for boardSupport.c...
-src/main.c(209): warning: no previous extern declaration for non-static variable 'fan_timer_count' [-Wmissing-variable-declarations]
-  209 | int fan_timer_count = 0; // Time count for 20s fan off timer
-      |     ^
-src/main.c(209): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  209 | int fan_timer_count = 0; // Time count for 20s fan off timer
-      | ^
-src/main.c(222): warning: no previous extern declaration for non-static variable 'global_timer' [-Wmissing-variable-declarations]
-  222 | int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
-      |     ^
-src/main.c(222): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  222 | int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
-      | ^
-src/main.c(225): warning: no previous extern declaration for non-static variable 'incomming_string' [-Wmissing-variable-declarations]
-  225 | char incomming_string[INCOMMING_BUFFER_SIZE] = {0};
-      |      ^
-src/main.c(225): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  225 | char incomming_string[INCOMMING_BUFFER_SIZE] = {0};
-      | ^
-src/main.c(226): warning: no previous extern declaration for non-static variable 'outgoing_string' [-Wmissing-variable-declarations]
-  226 | char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
-      |      ^
-src/main.c(226): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  226 | char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
-      | ^
-src/main.c(277): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  277 |       uint16_t timer_Count = count_from_rate_TIM6(1.0);
-      |                ^
-src/main.c(299): warning: use of logical '&&' with constant operand [-Wconstant-logical-operand]
-  299 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+creating preprocessor file for main.c...
+src/main.c(296): warning: passing 'volatile char[9]' to parameter of type 'char *' discards qualifiers [-Wincompatible-pointer-types-discards-qualifiers]
+  296 |       transmit_Status_Packet(outgoing_string);
+      |                              ^~~~~~~~~~~~~~~
+src/main.c(162): note: passing argument to parameter 'data' here
+  162 | void transmit_Status_Packet(char* data);
+      |                                   ^
+src/main.c(319): warning: use of logical '&&' with constant operand [-Wconstant-logical-operand]
+  319 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
       |                                                                                              ^  ~~~~
-src/main.c(299): note: use '&' for a bitwise operation
-  299 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(319): note: use '&' for a bitwise operation
+  319 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
       |                                                                                              ^~
       |                                                                                              &
-src/main.c(299): note: remove constant to silence this warning
-  299 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(319): note: remove constant to silence this warning
+  319 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
       |                                                                                              ^~~~~~~
-src/main.c(324): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  324 |     char* outgoing_string_ptr = get_outgoing_string();
-      |           ^
-src/main.c(299): warning: result of comparison of constant 48 with boolean expression is always false [-Wtautological-constant-out-of-range-compare]
-  299 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+src/main.c(319): warning: result of comparison of constant 64 with boolean expression is always false [-Wtautological-constant-out-of-range-compare]
+  319 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
       |                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~
-src/main.c(527): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
-  527 |   char* temperature_string = {0};
+src/main.c(348): warning: 'snprintf' will always be truncated; specified size is 6, but format string expands to at least 7 [-Wfortify-source]
+  348 |                 snprintf((char *)temperature_string,6 ,"%+05.1f",(double)temperature_output);
+      |                 ^
+src/main.c(562): warning: excess elements in scalar initializer [-Wexcess-initializers]
+  562 |   char* temperature_string = {0,0,0,0,0};
+      |                                 ^
+src/main.c(563): error: incompatible pointer to integer conversion passing 'char[8]' to parameter of type 'unsigned int' [-Wint-conversion]
+  563 |   snprintf(temperature_string, "%+05.1f", 6,(double)temperature_output);
+      |                                ^~~~~~~~~
+C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h(440): note: passing argument to parameter here
+  440 | extern _ARMABI int snprintf(char * __restrict /*s*/, size_t /*n*/,
+      |                                                                  ^
+src/main.c(563): error: incompatible integer to pointer conversion passing 'int' to parameter of type 'const char *' [-Wint-conversion]
+  563 |   snprintf(temperature_string, "%+05.1f", 6,(double)temperature_output);
+      |                                           ^
+C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h(441): note: passing argument to parameter here
+  441 |                      const char * __restrict /*format*/, ...) __attribute__((__nonnull__(3)));
+      |                                                        ^
+src/main.c(563): warning: format string is not a string literal [-Wformat-nonliteral]
+  563 |   snprintf(temperature_string, "%+05.1f", 6,(double)temperature_output);
+      |                                           ^
+src/main.c(581): warning: returning 'volatile char[9]' from a function with result type 'char *' discards qualifiers [-Wincompatible-pointer-types-discards-qualifiers]
+  581 |   return outgoing_string;
+      |          ^~~~~~~~~~~~~~~
+src/main.c(562): warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+  562 |   char* temperature_string = {0,0,0,0,0};
       |         ^
-src/main.c(1958): warning: no newline at end of file [-Wnewline-eof]
- 1958 | */
-      |   ^
-src/main.c(198): warning: no previous extern declaration for non-static variable 'cooling_output' [-Wmissing-variable-declarations]
-  198 | bool cooling_output;
+src/main.c(1256): warning: a function declaration without a prototype is deprecated in all versions of C [-Wstrict-prototypes]
+ 1256 | bool temperature_changed() 
+      |                         ^
+      |                          void
+src/main.c(1258): warning: implicit conversion increases floating-point precision: 'float' to 'double' [-Wdouble-promotion]
+ 1258 |   return (get_temperature() - temperature_input) > TEMP_DIFF_MIN || (temperature_input - get_temperature()) > TEMP_DIFF_MIN;
+      |                                                                      ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~  ~
+src/main.c(1258): warning: implicit conversion increases floating-point precision: 'float' to 'double' [-Wdouble-promotion]
+ 1258 |   return (get_temperature() - temperature_input) > TEMP_DIFF_MIN || (temperature_input - get_temperature()) > TEMP_DIFF_MIN;
+      |           ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~  ~
+src/main.c(1256): warning: no previous prototype for function 'temperature_changed' [-Wmissing-prototypes]
+ 1256 | bool temperature_changed() 
       |      ^
-src/main.c(198): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  198 | bool cooling_output;
+src/main.c(1256): note: declare 'static' if the function is not intended to be used outside of this translation unit
+ 1256 | bool temperature_changed() 
       | ^
+      | static 
 C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
    15 |     #define bool _Bool
       |                  ^
-src/main.c(199): warning: no previous extern declaration for non-static variable 'heating_output' [-Wmissing-variable-declarations]
-  199 | bool heating_output;
-      |      ^
-src/main.c(199): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  199 | bool heating_output;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(200): warning: no previous extern declaration for non-static variable 'fan_output' [-Wmissing-variable-declarations]
-  200 | bool fan_output;
-      |      ^
-src/main.c(200): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  200 | bool fan_output;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(201): warning: no previous extern declaration for non-static variable 'light_output' [-Wmissing-variable-declarations]
-  201 | bool light_output;
-      |      ^
-src/main.c(201): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  201 | bool light_output;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(203): warning: no previous extern declaration for non-static variable 'cooling_input' [-Wmissing-variable-declarations]
-  203 | bool cooling_input;
-      |      ^
-src/main.c(203): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  203 | bool cooling_input;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(204): warning: no previous extern declaration for non-static variable 'heating_input' [-Wmissing-variable-declarations]
-  204 | bool heating_input;
-      |      ^
-src/main.c(204): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  204 | bool heating_input;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(205): warning: no previous extern declaration for non-static variable 'fan_input' [-Wmissing-variable-declarations]
-  205 | bool fan_input;
-      |      ^
-src/main.c(205): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  205 | bool fan_input;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(206): warning: no previous extern declaration for non-static variable 'light_input' [-Wmissing-variable-declarations]
-  206 | bool light_input;
-      |      ^
-src/main.c(206): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  206 | bool light_input;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(208): warning: no previous extern declaration for non-static variable 'fan_timer_active' [-Wmissing-variable-declarations]
-  208 | bool fan_timer_active;
-      |      ^
-src/main.c(208): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  208 | bool fan_timer_active;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(210): warning: no previous extern declaration for non-static variable 'heating_cooling_manual_override_timer_active' [-Wmissing-variable-declarations]
-  210 | bool heating_cooling_manual_override_timer_active;
-      |      ^
-src/main.c(210): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  210 | bool heating_cooling_manual_override_timer_active;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(211): warning: no previous extern declaration for non-static variable 'manual_override_count' [-Wmissing-variable-declarations]
-  211 | int manual_override_count;
-      |     ^
-src/main.c(211): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  211 | int manual_override_count;
-      | ^
-src/main.c(213): warning: no previous extern declaration for non-static variable 'light_intensity_sensor' [-Wmissing-variable-declarations]
-  213 | bool light_intensity_sensor;
-      |      ^
-src/main.c(213): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  213 | bool light_intensity_sensor;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(214): warning: no previous extern declaration for non-static variable 'fan_switch' [-Wmissing-variable-declarations]
-  214 | bool fan_switch;
-      |      ^
-src/main.c(214): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  214 | bool fan_switch;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(215): warning: no previous extern declaration for non-static variable 'light_switch' [-Wmissing-variable-declarations]
-  215 | bool light_switch;
-      |      ^
-src/main.c(215): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  215 | bool light_switch;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(216): warning: no previous extern declaration for non-static variable 'temperature_input' [-Wmissing-variable-declarations]
-  216 | float temperature_input;
-      |       ^
-src/main.c(216): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  216 | float temperature_input;
-      | ^
-src/main.c(217): warning: no previous extern declaration for non-static variable 'adc_temperature' [-Wmissing-variable-declarations]
-  217 | int adc_temperature;
-      |     ^
-src/main.c(217): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  217 | int adc_temperature;
-      | ^
-src/main.c(218): warning: no previous extern declaration for non-static variable 'incomming_string_index' [-Wmissing-variable-declarations]
-  218 | int incomming_string_index;
-      |     ^
-src/main.c(218): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  218 | int incomming_string_index;
-      | ^
-src/main.c(220): warning: no previous extern declaration for non-static variable 'status_packet_recieved' [-Wmissing-variable-declarations]
-  220 | bool status_packet_recieved;
-      |      ^
-src/main.c(220): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-  220 | bool status_packet_recieved;
-      | ^
-C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h(15): note: expanded from macro 'bool'
-   15 |     #define bool _Bool
-      |                  ^
-src/main.c(299): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  299 |     if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
-      |                                                                          ^~~~~~~~~~~~~~~~
-src/main.c(302): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  302 |       cooling_input = incomming_string[1] & 0x10; // Clear all but 4th bit
-      |                       ^~~~~~~~~~~~~~~~
-src/main.c(303): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  303 |       heating_input = incomming_string[1] & 0x20; // Clear all but 5th bit
-      |                       ^~~~~~~~~~~~~~~~
-src/main.c(304): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  304 |       fan_input = incomming_string[1] & 0x40; // Clear all but 6th bit
-      |                   ^~~~~~~~~~~~~~~~
-src/main.c(305): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  305 |       light_input = incomming_string[1] & 0x80; // Clear all but 7th bit
-      |                     ^~~~~~~~~~~~~~~~
-src/main.c(329): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  329 |       outgoing_string[i] = outgoing_string_ptr[i];
-      |       ^~~~~~~~~~~~~~~
-src/main.c(329): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  329 |       outgoing_string[i] = outgoing_string_ptr[i];
-      |                            ^~~~~~~~~~~~~~~~~~~
-src/main.c(355): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  355 |         GPIOB->AFR[1] &= ~(GPIO_AFRH_AFSEL11_Msk | GPIO_AFRH_AFSEL10_Msk);
-      |         ^~~~~~~~~~
-./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
- 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
-      |                                     ^
-src/main.c(356): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  356 |         GPIOB->AFR[1] |= (0x07 << GPIO_AFRH_AFSEL11_Pos) | (0x07 << GPIO_AFRH_AFSEL10_Pos); // Set mode for 10 and 11 to be alternate function 7 (0b111)
-      |         ^~~~~~~~~~
-./inc/stm32f439xx.h(1342): note: expanded from macro 'GPIOB'
- 1342 |         #define GPIOB               ((GPIO_TypeDef *) GPIOB_BASE)
-      |                                     ^
-src/main.c(449): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  449 |       transmit_UART(data[i]);
-      |                     ^~~~
-src/main.c(497): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  497 |       incomming_string[incomming_string_index] = (char)incomming_character;
-      |       ^~~~~~~~~~~~~~~~
-src/main.c(533): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  533 |     outgoing_string[i + 1] = temperature_string[i];
-      |     ^~~~~~~~~~~~~~~
-src/main.c(533): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  533 |     outgoing_string[i + 1] = temperature_string[i];
-      |                              ^~~~~~~~~~~~~~~~~~
-src/main.c(538): warning: unsafe buffer access [-Wunsafe-buffer-usage]
-  538 |   outgoing_string[6] = (char)(0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
-      |   ^~~~~~~~~~~~~~~
-42 warnings generated.
+12 warnings and 2 errors generated.
 compiling main.c...
-linking...
-Program Size: Code=9628 RO-data=484 RW-data=4 ZI-data=1084  
-".\RAM\STM32F4_RAM.axf" - 0 Error(s), 42 Warning(s).
+compiling gpioControl.c...
+compiling system_stm32f4xx.c...
+".\RAM\STM32F4_RAM.axf" - 2 Error(s), 12 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -311,12 +133,13 @@ Package Vendor: Keil
    * Component: ARM::CMSIS:CORE@5.6.0
 
    * Component: Keil::Device:Startup@2.6.3
+      Source file:   MDK/Device/Source/ARM/STM32F42xxx_43xxx_OPT.s
       Source file:   MDK/Device/Source/ARM/STM32F4xx_OTP.s
       Include file:  Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h
-      Source file:   MDK/Device/Source/ARM/STM32F42xxx_43xxx_OPT.s
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/arm/startup_stm32f439xx.s
       Source file:   Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
-Build Time Elapsed:  00:00:02
+Target not created.
+Build Time Elapsed:  00:00:03
 </pre>
 </body>
 </html>
