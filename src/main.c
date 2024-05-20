@@ -187,8 +187,6 @@ bool TIM6_expired(void);
 bool TIM7_expired(void);
 void wait_For_TIM6(void);
 void wait_For_TIM7(void);
-void stop_TIM6(void);
-void stop_TIM7(void);
 
 // Handle inputs and outputs methods
 void handle_cooling_and_heating(void);
@@ -201,38 +199,42 @@ unsigned short count_from_rate_TIM6(float rate);
 unsigned short count_from_delay_ms_TIM7(int delay_ms);
 
 // Global Variables
-bool cooling_output;
-bool heating_output;
-bool fan_output;
-bool light_output;
+static volatile bool cooling_output;
+static volatile bool heating_output;
+static volatile bool fan_output;
+static volatile bool light_output;
 
-bool cooling_input;
-bool heating_input;
-bool fan_input;
-bool light_input;
+static volatile bool cooling_input;
+static volatile bool heating_input;
+static volatile bool fan_input;
+static volatile bool light_input;
 
-bool fan_timer_active;
-int fan_timer_count = 0; // Time count for 20s fan off timer
-bool heating_cooling_manual_override_timer_active;
-int manual_override_count;
+static volatile bool fan_timer_active;
+static volatile int fan_timer_count = 0; // Time count for 20s fan off timer
+static volatile bool heating_cooling_manual_override_timer_active;
+static volatile int manual_override_count;
 
-bool debounce_timer_active;
+static volatile bool debounce_timer_active;
 
-bool light_intensity_sensor;
-bool fan_switch;
-bool light_switch;
-float temperature_input;
-float temperature_output;
-int adc_temperature;
-int incomming_string_index;
+static volatile bool light_intensity_sensor;
+static volatile bool fan_switch;
+static volatile bool light_switch;
+static volatile float temperature_input;
+static volatile float temperature_output;
+static volatile int adc_temperature;
+static volatile int incomming_string_index;
 
-bool status_packet_recieved;
+static volatile bool status_packet_recieved;
 
-int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
+static volatile int global_timer = 0; // Global timer for 1Hz timer to allow for 20s timeout and UART vs switch preference
 
 // Character array for UART communication, one for incomming string and one for outgoing string
-char incomming_string[INCOMMING_BUFFER_SIZE] = {0};
-char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
+static volatile char incomming_string[INCOMMING_BUFFER_SIZE] = {0};
+static volatile char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
+
+static volatile bool fan_held = false;
+static volatile bool light_held = false;
+
 
 /**
  * @brief Main function of the program.
@@ -245,6 +247,9 @@ char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
  */
 int main(void)
 {
+	uint16_t timer_Count;
+	char temperature_string[6] = {0,0,0,0,0,0};
+
 	// Bring up the GPIO for the power regulators.
 	boardSupport_init();
 
@@ -280,6 +285,8 @@ int main(void)
   debounce_timer_active = false;
   fan_timer_active = false;
   heating_cooling_manual_override_timer_active = false;
+	
+	
 
   while (1)
   { 
@@ -287,8 +294,7 @@ int main(void)
     if (TIM6_expired())
     {
       transmit_Status_Packet(outgoing_string);
-
-      uint16_t timer_Count = count_from_rate_TIM6(1.0);
+      timer_Count = count_from_rate_TIM6(1.0);
       start_TIM6(timer_Count); // Restart timer
 
       // Increment global timer
@@ -310,7 +316,7 @@ int main(void)
     receive_Status_Packet();
 
     // Check if status frame is recieved and it is valid (First 4 bits in the status frame are 0b0011 and @ is the header character)
-    if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x30))
+    if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
     {
       // Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
       cooling_input = incomming_string[1] & 0x10; // Clear all but 4th bit
@@ -333,15 +339,29 @@ int main(void)
     fan_output = handle_fan();
     light_output = handle_light();
     temperature_output = get_temperature();
+		
+		// Set header character
+		outgoing_string[0] = ASCII_AT;
 
-    // Receive array of characters to be transmitted
-    char* outgoing_string_ptr = get_outgoing_string();
+		// Set temperature characters
+		// Convert temperature to string
+		snprintf((char *)temperature_string,6 ,"%+05.1f",(double)temperature_output);
 
-    // Assign outgoing string to the outgoing buffer
-    for (int i = 0; i < OUTGOING_BUFFER_SIZE; i++)
-    {
-      outgoing_string[i] = outgoing_string_ptr[i];
-    }
+		// Set temperature characters
+		for (int i = 0; i < 5; i++)
+		{
+			outgoing_string[i + 1] = temperature_string[i];
+		}
+
+		// Set control state character
+		// Control State is a byte, convert to string
+		outgoing_string[6] = (char)((0x03 << 4) | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
+
+		// Set CR character
+		outgoing_string[7] = ASCII_CR;
+
+		// Set LF character
+		outgoing_string[8] = ASCII_LF;
 		
 		// Handle temperature for auto heating/cooling (If an input has not been given
 
@@ -355,8 +375,6 @@ int main(void)
  */
 void configure_USART3(void)
 {
-  // TODO: Verify this configuration with requirements
-
 	// UART is configured at 38,400bps, 8 data bits, No Parity, 1 stop bit
 	// UART APB1 Bus Clock is 42MHz
 	// Baud Rate required is 68.375
@@ -374,7 +392,7 @@ void configure_USART3(void)
 	
 	// Set USART Baud Rate
 	USART3->BRR &= 0xFFFF0000; // Clear Baud Rate register
-	USART3->BRR |= (0x44 << USART_BRR_DIV_Mantissa_Pos | 0x06 << USART_BRR_DIV_Fraction_Pos); // Set Baud rate
+	USART3->BRR |= ((0x44 << USART_BRR_DIV_Mantissa_Pos) | (0x06 << USART_BRR_DIV_Fraction_Pos)); // Set Baud rate
 	
 	// Set numberof bits per transfer to 8-bits (By clearing M)
 	USART3->CR1 &= ~(USART_CR1_M);
@@ -410,11 +428,11 @@ void configure_ADC(void)
   // Conversion time is set to 56 cycles (This is the minimum value for 12-bit resolution)
   // Data alignment is set to right
   
-  // Disable battery sensing channel
-  ADC123_COMMON->CCR &= ~(ADC_CCR_VBATE);
+  // Set prescaler to /8
+  ADC123_COMMON->CCR &= (0x03 << ADC_CCR_ADCPRE_Pos);
 
   // Disable scan mode and set resolution to 12 bits
-  ADC3->CR1 &= ~(ADC_CR1_SCAN | (0x00 << ADC_CR1_RES_Pos));
+  ADC3->CR1 &= ~(ADC_CR1_SCAN | ADC_CR1_RES_Msk);
 
   // Set the data alignment to right and set single mode for conversion and sample
   ADC3->CR2 &= ~(ADC_CR2_ALIGN | ADC_CR2_CONT | ADC_CR2_SWSTART);
@@ -425,8 +443,8 @@ void configure_ADC(void)
   ADC3->SQR1 &= ~(ADC_SQR1_L_Msk);
 
   // Set sample time to 56 cycles
-  ADC3->SMPR2 &= ~(ADC_SMPR2_SMP8_Msk); 
-  ADC3->SMPR2 |= (0x03 << ADC_SMPR2_SMP8_Pos);
+  ADC3->SMPR2 &= ~(ADC_SMPR2_SMP0_Msk); 
+  ADC3->SMPR2 |= (0x03 << ADC_SMPR2_SMP0_Pos);
 
   // Enable ADC3
   ADC3->CR2 |= ADC_CR2_ADON;
@@ -447,6 +465,7 @@ void transmit_UART(uint8_t data)
 
   // Transmit the data
   USART3->DR = data;
+	__ASM("NOP");
 }
 
 /**
@@ -506,7 +525,7 @@ void receive_Status_Packet(void)
   if ((incomming_string_index < INCOMMING_BUFFER_SIZE) && (incomming_character != -1))
   {
     // Check if character is valid and append to the incomming string buffer
-    if ((incomming_string_index == 0 && incomming_character == ASCII_AT) || (incomming_string_index == 1 && (incomming_character & 0xF0) == 0x30) || (incomming_string_index == 2 && incomming_character == ASCII_CR) || (incomming_string_index == 3 && incomming_character == ASCII_LF))
+    if ((incomming_string_index == 0 && incomming_character == ASCII_AT) || (incomming_string_index == 1 && (incomming_character & 0xF0) == 0x40) || (incomming_string_index == 2 && incomming_character == ASCII_CR) || (incomming_string_index == 3 && incomming_character == ASCII_LF))
     {
       incomming_string[incomming_string_index] = (char)incomming_character;
       incomming_string_index++;
@@ -540,8 +559,8 @@ char *get_outgoing_string(void)
 
   // Set temperature characters
   // Convert temperature to string
-  char* temperature_string = {0};
-  sprintf(temperature_string, "%+05.1f", (double)temperature_output);
+  char* temperature_string = {0,0,0,0,0};
+  snprintf(temperature_string, "%+05.1f", 6,(double)temperature_output);
 
   // Set temperature characters
   for (int i = 0; i < 5; i++)
@@ -551,7 +570,7 @@ char *get_outgoing_string(void)
 
   // Set control state character
   // Control State is a byte, convert to string
-  outgoing_string[6] = (char)(0x30 | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
+  outgoing_string[6] = (char)((0x03 << 4) | (cooling_output << 3) | (heating_output << 2) | (fan_output << 1) | light_output);
 
   // Set CR character
   outgoing_string[7] = ASCII_CR;
@@ -583,17 +602,16 @@ void configure_TIM6(void)
 																													// Thus, at one cycle it will be TIM6RATE Hz (Assuming 82MHz of APB1)
 	TIM6->ARR |= (DEFAULT_TIMER_COUNT << TIM_ARR_ARR_Pos); 	// Initialise auto-reload register with default value (what count will auto reload)
 
-	// Set OPM to on and ARPE (TODO: ARPE not touched)
+	// Set OPM to on
 	TIM6->CR1 |= (TIM_CR1_OPM);
 	
-	// Enable timer
-	TIM6->CR1 |= (TIM_CR1_CEN);
-	
 	// Enable timer for one cycle to clear and reload psc buffer
-	//start_TIM6(DEFAULT_TIMER_COUNT);
+	start_TIM6(DEFAULT_TIMER_COUNT);
 	
-	wait_For_TIM6(); // FIXME: Doesn't expire
-	stop_TIM6();
+	wait_For_TIM6();
+	
+	TIM6->CR1 |= (TIM_CR1_CEN);
+	TIM6->SR |= (TIM_SR_UIF);
 }
 
 /**
@@ -601,10 +619,10 @@ void configure_TIM6(void)
  */
 void configure_TIM7(void)
 {
-  // Ensure timer is off and all configurations are reset
-	TIM7->CR1 &= ~(TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_UDIS | TIM_CR1_CEN);
+	// Ensure timer is off and all configurations are reset
+	TIM7->CR1 &= ~(TIM_CR1_ARPE | TIM_CR1_OPM | TIM_CR1_UDIS | TIM_CR1_CEN);				
 	
-	// Disable TIM7 interrupts
+	// Disable TIM6 interrupts
 	TIM7->DIER &= ~(TIM_DIER_UIE);
 	
 	// Clear prescaler, count and autoreload registers
@@ -612,19 +630,21 @@ void configure_TIM7(void)
 	TIM7->CNT &= ~(TIM_CNT_CNT_Msk);	// Clear count register
 	TIM7->ARR &= ~(TIM_ARR_ARR_Msk);	// Clear autoreload register
 	
-	// Set OPM to on and ARPE
-	TIM7->CR1 |= (TIM_CR1_ARPE | TIM_CR1_OPM);
-	
 	// Set Prescaler
-	TIM7->PSC |= (TIM7_PRESCALER << TIM_PSC_PSC_Pos);				// Divide APB1 Clock by TIM6PRESCALER + 1
+	TIM7->PSC |= (TIM6_PRESCALER << TIM_PSC_PSC_Pos);				// Divide APB1 Clock by TIM6PRESCALER + 1
 																													// Thus, at one cycle it will be TIM6RATE Hz (Assuming 82MHz of APB1)
-
 	TIM7->ARR |= (DEFAULT_TIMER_COUNT << TIM_ARR_ARR_Pos); 	// Initialise auto-reload register with default value (what count will auto reload)
 
+	// Set OPM to on
+	TIM7->CR1 |= (TIM_CR1_OPM);
+	
 	// Enable timer for one cycle to clear and reload psc buffer
 	start_TIM7(DEFAULT_TIMER_COUNT);
-	wait_For_TIM7(); // FIXME: Doesn't expire
-	stop_TIM7();
+	
+	wait_For_TIM7();
+	
+	TIM7->CR1 |= (TIM_CR1_CEN);
+	TIM7->SR |= (TIM_SR_UIF);
 }
 
 /**
@@ -776,22 +796,23 @@ void configure_GPIOF(void)
 {
   // Configure:
 	// LED7: PF8	(Output, Clear Floating Values, Active Low)
-	
+	// ADC3: PF10 (Analogue)
+
 	// Configure I/O Ports
 	// Clear LED Modes (Set 0b00 for bit pairs)
-	GPIOF->MODER &= ~(GPIO_MODER_MODER8_Msk); 																// Bit 8 LED7
+	GPIOF->MODER &= ~(GPIO_MODER_MODER8_Msk | GPIO_MODER_MODER10_Msk);				// Bit 8 LED7
 
-	// Set LED Modes as Output (Set 0b01 for bit pairs)
-	GPIOF->MODER |= (0x01 << GPIO_MODER_MODER8_Pos); 													// Bit 8 LED7
+	// Set LED Modes as Output (Set 0b01 for bit pairs) and PF10 as Analogue
+	GPIOF->MODER |= ((0x01 << GPIO_MODER_MODER8_Pos) | 0x03 << GPIO_MODER_MODER10_Pos);	// Bit 8 LED7
 	
 	// Enable Push-Pull Output Mode (Clear Relevant Bits)
-	GPIOF->OTYPER &= ~(GPIO_OTYPER_OT8); 																			// Bit 8 LED7
+	GPIOF->OTYPER &= ~(GPIO_OTYPER_OT8 | GPIO_OTYPER_OT10); 																			// Bit 8 LED7
 	
 	// Clear Speed Modes (Set 0b00 for bit pairs, by anding ~0b11)
-	GPIOF->OSPEEDR &= (unsigned int) (~(0x03 << GPIO_OSPEEDR_OSPEED8_Pos)); 	// Bit 8 LED7
+	GPIOF->OSPEEDR &= (unsigned int) ~(GPIO_OSPEEDR_OSPEED8_Msk | GPIO_OSPEEDR_OSPEED8_Msk); 	// Bit 8 LED7
 	
 	// Set Speed Mode to Medium (Set 0b01 for bit pairs)
-	GPIOF->OSPEEDR |= (unsigned int) (0x01 << GPIO_OSPEEDR_OSPEED8_Pos); 			// Bit 8 LED7
+	GPIOF->OSPEEDR |= (unsigned int) ((0x01 << GPIO_OSPEEDR_OSPEED8_Pos) | (0x01 << GPIO_OSPEEDR_OSPEED10_Pos)); 			// Bit 8 LED7
 	
 	// Clear Pull-Up-Pull Down Register (Pull-up)
 	GPIOF->PUPDR &= (unsigned int) (~(0x01 << GPIO_PUPDR_PUPD8_Pos)); 				// Bit 8 LED7
@@ -969,7 +990,18 @@ int get_ADC_temperature(void)
 {
   // ADC3 is on PF10
   // Read ADC3 and return the value (Mask to only keep the 12 bits of the ADC value)
-  return (int)(ADC3->DR & 0x0FFF);
+  uint16_t adc_sample = 0;
+	
+	// Trigger ADC conversion
+	ADC3->CR2 |= ADC_CR2_SWSTART;
+	
+	// Wait for conversion to complete
+	while ((ADC3->SR & ADC_SR_EOC) == 0x00);
+	
+	// Get value from ADC
+	adc_sample = ADC3->DR & 0x0000FFFF;
+	
+	return (int)(adc_sample);
 }
 
 /**
@@ -1020,24 +1052,39 @@ bool get_light_intensity_gpio(void)
 bool get_fan_switch(void)
 {
   // Fan Switch is on PB0
-  bool state = get_fan_switch_gpio();
+  bool pressed = get_fan_switch_gpio();
+	
+	// If a full down up debounced press is detected this will be set to true
+	bool confirmed_press = false;
+	
   // Switch is active low, return inverted value of the switch state
   // If 50ms timer is started, expired AND switch isn't pressed
-  if (debounce_timer_active && TIM7_expired() && !state)
-  {
-    // Reset debounce timer, return true (Switch is confirmed pressed)
-    debounce_timer_active = false;
-    return true;
-  }
-  // Else, if sensor is active, start debounce timer
-  else if (state)
-  {
-    // Start debounce timer
-    debounce_timer_active = true;
-    start_TIM7(count_from_delay_ms_TIM7(50));
-  }
-  // Else, return false
-  return false;
+  // If it IS being pressed
+	if (pressed) {
+		// and it was not being held previously
+		if (!fan_held) {
+			// (it has gone from not pressed to pressed...)
+			// Record fan as held
+			fan_held = true;
+			start_TIM7(count_from_delay_ms_TIM7(50));
+			// No full press confirmed
+		}
+	}	
+	// If fan switch is not pressed
+	else {
+		// And it was being held
+		if (fan_held) {
+			// It has gone from pressed to not pressed
+			fan_held = false;
+			
+			// If 50ms timer has expired
+			if (TIM7_expired()) {
+				// Full press confirmed 
+				confirmed_press = true;
+			}
+		}
+	}
+	return confirmed_press;
 }
 
 /**
@@ -1047,9 +1094,9 @@ bool get_fan_switch(void)
  */
 bool get_fan_switch_gpio(void)
 {
-  // Fan Switch is on PB0
+  // Fan Switch is on PB1
   // Switch is active low, return inverted value of the switch state
-  return (bool)!(GPIOB->IDR & GPIO_IDR_ID0_Msk);
+  return (bool)!(GPIOB->IDR & GPIO_IDR_ID1_Msk);
 }
 
 /**
@@ -1059,25 +1106,40 @@ bool get_fan_switch_gpio(void)
  */
 bool get_light_switch(void)
 {
-  // Light Switch is on PA9
-  bool state = get_fan_switch_gpio();
+  // Fan Switch is on PB0
+  bool pressed = get_light_switch_gpio();
+	
+	// If a full down up debounced press is detected this will be set to true
+	bool confirmed_press = false;
+	
   // Switch is active low, return inverted value of the switch state
   // If 50ms timer is started, expired AND switch isn't pressed
-  if (debounce_timer_active && TIM7_expired() && !state)
-  {
-    // Reset debounce timer, return true (Switch is confirmed pressed)
-    debounce_timer_active = false;
-    return true;
-  }
-  // Else, if sensor is active, start debounce timer
-  else if (state)
-  {
-    // Start debounce timer
-    debounce_timer_active = true;
-    start_TIM7(count_from_delay_ms_TIM7(50));
-  }
-  // Else, return false
-  return false;
+  // If it IS being pressed
+	if (pressed) {
+		// and it was not being held previously
+		if (!light_held) {
+			// (it has gone from not pressed to pressed...)
+			// Record fan as held
+			light_held = true;
+			start_TIM7(count_from_delay_ms_TIM7(50));
+			// No full press confirmed
+		}
+	}	
+	// If fan switch is not pressed
+	else {
+		// And it was being held
+		if (light_held) {
+			// It has gone from pressed to not pressed
+			light_held = false;
+			
+			// If 50ms timer has expired
+			if (TIM7_expired()) {
+				// Full press confirmed 
+				confirmed_press = true;
+			}
+		}
+	}
+	return confirmed_press;
 }
 
 /**
@@ -1099,7 +1161,7 @@ bool get_light_switch_gpio(void)
 bool TIM6_expired(void)
 {
   // Return if timer expired and clear expiration flag
-  bool expired = (TIM6->SR & TIM_SR_UIF);
+  volatile bool expired = (TIM6->SR & TIM_SR_UIF);
   // Clear UIF overflow flag
   TIM6->SR &= ~(TIM_SR_UIF_Msk);
   return expired;
@@ -1112,7 +1174,7 @@ bool TIM6_expired(void)
 bool TIM7_expired(void)
 {
   // Return if timer expired and clear expiration flag
-  bool expired = (TIM7->SR & TIM_SR_UIF);
+  volatile bool expired = (TIM7->SR & TIM_SR_UIF);
   // Clear UIF overflow flag
   TIM7->SR &= ~(TIM_SR_UIF_Msk);
   return expired;
@@ -1156,14 +1218,14 @@ void wait_For_TIM7(void)
 void start_TIM6(uint16_t count)
 {
 	// Ensure timer is off
-	stop_TIM6();
+	TIM6->CR1 &= ~TIM_CR1_CEN;
 
-	// Clear UIF overflow flag
-	TIM6->SR &= ~(TIM_SR_UIF_Msk);
-	
   // Set autoreload register and enable counter
 	TIM6->ARR &= ~(TIM_ARR_ARR_Msk);							          // Clear autoreload register
 	TIM6->ARR |= ((unsigned int)count << TIM_ARR_ARR_Pos);  // Set autoreload register
+	
+	// Clear UIF overflow flag
+	TIM6->SR &= ~(TIM_SR_UIF_Msk);
 	TIM6->CR1 |= TIM_CR1_CEN;											          // Enable counter
 }
 
@@ -1174,8 +1236,8 @@ void start_TIM6(uint16_t count)
  */
 void start_TIM7(uint16_t count)
 {
-  // Ensure timer is off
-  stop_TIM7();
+	// Ensure timer is off
+	TIM7->CR1 &= ~TIM_CR1_CEN;
 
   // Clear UIF overflow flag
   TIM7->SR &= ~(TIM_SR_UIF_Msk);
@@ -1184,28 +1246,6 @@ void start_TIM7(uint16_t count)
   TIM7->ARR &= ~(TIM_ARR_ARR_Msk);							          // Clear autoreload register
   TIM7->ARR |= ((unsigned int)count << TIM_ARR_ARR_Pos);  // Set autoreload register
   TIM7->CR1 |= TIM_CR1_CEN;											          // Enable counter
-}
-
-/**
- * @brief Stops TIM6.
- */
-void stop_TIM6(void)
-{
-	// Ensure timer is off
-	TIM6->CR1 &= ~TIM_CR1_CEN;
-	// Clear UIF overflow flag
-	TIM6->SR &= ~(TIM_SR_UIF_Msk);
-}
-
-/**
- * @brief Stops TIM7.
- */
-void stop_TIM7(void)
-{
-	// Ensure timer is off
-	TIM7->CR1 &= ~TIM_CR1_CEN;
-	// Clear UIF overflow flag
-	TIM7->SR &= ~(TIM_SR_UIF_Msk);
 }
 
 /**
@@ -1245,13 +1285,13 @@ void handle_cooling_and_heating(void)
     manual_override_count = 0;
   }
 
-  if (temperature_input >= 25.0 && !heating_cooling_manual_override_timer_active)
+  if (temperature_input >= 25.0f && !heating_cooling_manual_override_timer_active)
   {
     // If temperature is above 25 degrees, turn off cooling and turn on heating
     cooling_output = false;
     heating_output = true;
   }
-  else if (temperature_input <= 16.0)
+  else if (temperature_input <= 16.0f)
   {
     // If temperature is below 16 degrees, turn on cooling and turn off heating
     cooling_output = true;
