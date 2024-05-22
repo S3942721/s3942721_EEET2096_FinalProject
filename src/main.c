@@ -981,15 +981,15 @@ void set_heating(bool on)
  */
 void set_fan(bool on)
 {
-  // Fan is on PB1
+  // Fan is on PA8
   if (on)
   {
-		GPIOB->ODR &= ~GPIO_ODR_OD1;
+		GPIOA->ODR &= ~GPIO_ODR_OD8;
   } 
   // Fan is off
   else 
   {
-    GPIOB->ODR |= GPIO_ODR_OD1;
+    GPIOA->ODR |= GPIO_ODR_OD8;
   }
 }
 
@@ -1336,15 +1336,15 @@ bool handle_fan(void)
     // If 20s has passed then turn fan back on
     if (fan_timer_count >= FAN_TIMER_TIMEOUT)
     {
-      // Turn fan off
+      // Turn fan back on
       fan_timer_active = false;
       fan_timer_count = 0;
-      return false;
+      return true;
     }
-    // If 20s has not passed then keep fan on
+    // If 20s has not passed then keep fan off
     else
     {
-      return true;
+      return false;
     }
   }
   // If fan switch was hit
