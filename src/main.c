@@ -234,7 +234,7 @@ static volatile char outgoing_string[OUTGOING_BUFFER_SIZE] = {0};
 
 static volatile bool fan_held = false;
 static volatile bool light_held = false;
-
+static volatile bool light_intensity_held = false;
 
 /**
  * @brief Main function of the program.
@@ -338,6 +338,8 @@ int main(void)
       status_packet_recieved = false;
       incomming_string[0] = '\0';
       incomming_string_index = 0;
+			
+			heating_cooling_manual_override_timer_active = true;
     }
 
     // Read Switches
@@ -641,7 +643,7 @@ void configure_TIM7(void)
 	TIM7->ARR &= ~(TIM_ARR_ARR_Msk);	// Clear autoreload register
 	
 	// Set Prescaler
-	TIM7->PSC |= (TIM6_PRESCALER << TIM_PSC_PSC_Pos);				// Divide APB1 Clock by TIM6PRESCALER + 1
+	TIM7->PSC |= (TIM7_PRESCALER << TIM_PSC_PSC_Pos);				// Divide APB1 Clock by TIM6PRESCALER + 1
 																													// Thus, at one cycle it will be TIM6RATE Hz (Assuming 82MHz of APB1)
 	TIM7->ARR |= (DEFAULT_TIMER_COUNT << TIM_ARR_ARR_Pos); 	// Initialise auto-reload register with default value (what count will auto reload)
 
@@ -755,10 +757,9 @@ void configure_GPIOA(void) //Cam (Sam - Bug fixes and documentation/formatting)
 void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and documentation/formatting)
 {
   // Configure:
-  // LED2: PB1 	(Output, Clear Floating Values, Active Low)
+  // SW6: PB1 	(Input, Clear Floating Values, Active Low)
   // LED6: PB8 	(Output, Clear Floating Values, Active Low)
-  // SW6: PB0 	(Input, Clear Floating Values, Active Low)
-  // UART3 Transmit: PB10 (Alternate Function, Clear Floating Values, Active Low)
+	// UART3 Transmit: PB10 (Alternate Function, Clear Floating Values, Active Low)
   // UART3 Receive: PB11 (Alternate Function, Clear Floating Values, Active Low)
 
   // Configure I/O Ports
@@ -768,11 +769,10 @@ void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and docum
 										| GPIO_MODER_MODER11_Msk);
 
   // Set LED Modes as Output (Set 0b01 for bit pairs)
-  GPIOB->MODER |= ((0x01 << GPIO_MODER_MODER1_Pos) | 
-                   (0x01 << GPIO_MODER_MODER8_Pos));
+  GPIOB->MODER |= (0x01 << GPIO_MODER_MODER8_Pos);
 
   // Enable Push-Pull Output Mode (Clear Relevant Bits)
-  GPIOB->OTYPER &= ~(GPIO_OTYPER_OT1 | GPIO_OTYPER_OT8);
+  GPIOB->OTYPER &= ~(GPIO_OTYPER_OT8);
 
   // Clear Speed Modes (Set 0b00 for bit pairs, by anding ~0b11)
   GPIOB->OSPEEDR &= (unsigned int) (~(0x03 << GPIO_OSPEEDR_OSPEED1_Pos) | 
@@ -792,8 +792,8 @@ void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and docum
                                   ~(0x01 << GPIO_PUPDR_PUPD10_Pos) |
                                   ~(0x01 << GPIO_PUPDR_PUPD11_Pos));
   
-  // Set Output Data Register to TURN OFF LEDS by default
-  GPIOB->ODR |= (GPIO_ODR_OD1 | GPIO_ODR_OD8);
+  // Set Output Data Register to TURN OFF LEDS by default (set to logic high)
+  GPIOB->ODR |= GPIO_ODR_OD8;
 }
 
 /**
@@ -809,10 +809,10 @@ void configure_GPIOF(void)
 	// ADC3: PF10 (Analogue)
 
 	// Configure I/O Ports
-	// Clear LED Modes (Set 0b00 for bit pairs)
+	// Clear Modes (Set 0b00 for bit pairs)
 	GPIOF->MODER &= ~(GPIO_MODER_MODER8_Msk | GPIO_MODER_MODER10_Msk);				// Bit 8 LED7
 
-	// Set LED Modes as Output (Set 0b01 for bit pairs) and PF10 as Analogue
+	// Set LED Modes as Output (Set 0b01 for bit pairs) and PF10 as Analogue (0b11 for bit pair)
 	GPIOF->MODER |= ((0x01 << GPIO_MODER_MODER8_Pos) | 0x03 << GPIO_MODER_MODER10_Pos);	// Bit 8 LED7
 	
 	// Enable Push-Pull Output Mode (Clear Relevant Bits)
@@ -901,7 +901,7 @@ unsigned short count_from_rate_TIM6(float rate)
  */
 uint16_t count_from_delay_ms_TIM7(int delay_ms)
 {
-  return (uint16_t)(TIM7_RATE * delay_ms / 1000);
+  return (uint16_t)((TIM7_RATE * delay_ms) / 1000);
 }
 
 /**
@@ -1022,24 +1022,10 @@ int get_ADC_temperature(void)
 bool get_light_intensity(void)
 {
   // Light Intensity Sensor is on PA10
-  bool state = get_light_intensity_gpio();
-  // Sensor is active low, return inverted value of the sensor state
-  // If 50ms timer is started, expired AND switch isn't pressed
-  if (debounce_timer_active && TIM7_expired() && !state)
-  {
-    // Reset debounce timer, return true (Switch is confirmed pressed)
-    debounce_timer_active = false;
-    return true;
-  }
-  // Else, if sensor is active, start debounce timer
-  else if (state)
-  {
-    // Start debounce timer
-    debounce_timer_active = true;
-    start_TIM7(count_from_delay_ms_TIM7(50));
-  }
-  // Else, return false
-  return false;
+  bool pressed = get_light_intensity_gpio();
+
+	// No debounce required as this is not a "user pressed input"
+	return pressed;
 }
 
 /**
@@ -1405,7 +1391,7 @@ bool handle_fan(void)
 bool handle_light(void) //Cam (Sam - fix bug in function and add functionality)
 {
   // If Light switch was confirmed to be hit (With 50ms debounce)
-  if (light_input)
+  if (light_switch)
   {
     // If light already detected keep light off
     if (get_light_intensity())
