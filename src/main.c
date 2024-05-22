@@ -21,7 +21,7 @@
 #define TIM6_RATE CPU_CLOCK/(TIM6_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 #define TIM7_RATE CPU_CLOCK/(TIM7_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 
-#define USART_CONTROL_TIMEOUT 15 // 15s timeout for USART control
+#define USART_CONTROL_TIMEOUT 2 // TOOOOOOOOOOOOOOOOOOOOOOOOOO DOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO DEBUG // 15s timeout for USART control
 #define FAN_TIMER_TIMEOUT 20 // 20s timeout for fan
 
 #define USART_TIMEOUT 1000 // timeout for USART
@@ -362,7 +362,10 @@ int main(void)
       // If the temperature is between 16℃ and 25℃ then accept USART control
       if (get_temperature() >= AUTO_CONTROL_MIN && get_temperature() <= AUTO_CONTROL_MAX)
       {
-        // If cooling and heating are mutually exclusive then set output to input
+				// Set fan output to input
+				fan_output = fan_input;
+
+				// If cooling and heating are mutually exclusive then set output to input
         if (!(cooling_input && heating_input)) {
           // If both cooling and heating are given then ignore input
           // If only one is set then set output to input
@@ -373,10 +376,10 @@ int main(void)
 					handle_auto_thermostat();
 				}
       }
+			// Set light output to input (regardless of temp range)
+			light_output = light_input;
 
-      // Set fan and light outputs to input (regardless of temp range)
-      fan_output = fan_input;
-      light_output = light_input;
+
     } 
     // Follow complete local control (including user switches) if USART control is not active
     else {
