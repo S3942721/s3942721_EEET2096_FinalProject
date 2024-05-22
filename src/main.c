@@ -327,24 +327,32 @@ int main(void)
 			}
     }
 
+		status_packet_recieved = false;
+		
     // Recieve/Check for USART input
     receive_Status_Packet();
-
+	
     // Check if status frame is recieved and it is valid (First 4 bits in the status frame are 0b0011 and @ is the header character)
-    if (status_packet_recieved && (incomming_string[0] == ASCII_AT) && ((incomming_string[1] && 0xF0) == 0x40))
+    if (status_packet_recieved)
     {
-      // Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
-      cooling_input = incomming_string[1] & 0x10; // Clear all but 4th bit
-      heating_input = incomming_string[1] & 0x20; // Clear all but 5th bit
-      fan_input = incomming_string[1] & 0x40; // Clear all but 6th bit
-      light_input = incomming_string[1] & 0x80; // Clear all but 7th bit
+			if (incomming_string[0] == ASCII_AT)
+			{
+				if ((incomming_string[1] & 0xF0) == 0x40) 
+				{
+					// Set inputs based on status frame (These are bool so no shifting required, any non 0 value will be true)
+					cooling_input = incomming_string[1] & 0x8; // Clear all but 4th bit
+					heating_input = incomming_string[1] & 0x4; // Clear all but 5th bit
+					fan_input = incomming_string[1] & 0x2; // Clear all but 6th bit
+					light_input = incomming_string[1] & 0x1; // Clear all but 7th bit
 
-      // Reset status packet flag and clear current status string
-      status_packet_recieved = false;
-      incomming_string[0] = '\0';
-      incomming_string_index = 0;
-			
-			usart_control = true;
+					// Reset status packet flag and clear current status string
+					status_packet_recieved = false;
+					incomming_string[0] = '\0';
+					incomming_string_index = 0;
+					
+					usart_control = true;
+				}
+			}
     }
 
     // If USART control is active and not expired then handle inputs
@@ -361,9 +369,9 @@ int main(void)
           cooling_output = cooling_input;
           heating_output = heating_input;
         }
-      } 
-      else {
-        handle_auto_thermostat();
+				else {
+					handle_auto_thermostat();
+				}
       }
 
       // Set fan and light outputs to input (regardless of temp range)
@@ -372,6 +380,7 @@ int main(void)
     } 
     // Follow complete local control (including user switches) if USART control is not active
     else {
+			usart_control = false;
       // Read Switches
       light_switch = get_light_switch();
       fan_switch = get_fan_switch();
@@ -541,7 +550,7 @@ int8_t receive_UART(void)
   int8_t incomming_character = -1;
 
   // Check if the recieve buffer is not empty
-  if ((USART3->SR & USART_SR_RXNE) == 0x01)
+  if (USART3->SR & USART_SR_RXNE)
   {
     // Read the incomming character
     incomming_character = (volatile int8_t)USART3->DR;
@@ -564,22 +573,30 @@ void receive_Status_Packet(void)
 
   // Recieve incomming character
   int8_t incomming_character = receive_UART();
+	
+	status_packet_recieved = false;
 
-  // Check if the incomming character is valid and append to the incomming string buffer
-  if ((incomming_string_index < INCOMMING_BUFFER_SIZE) && (incomming_character != -1))
-  {
-    // Check if character is valid and append to the incomming string buffer
-    if ((incomming_string_index == 0 && incomming_character == ASCII_AT) || (incomming_string_index == 1 && (incomming_character & 0xF0) == 0x40) || (incomming_string_index == 2 && incomming_character == ASCII_CR) || (incomming_string_index == 3 && incomming_character == ASCII_LF))
-    {
-      incomming_string[incomming_string_index] = (char)incomming_character;
-      incomming_string_index++;
-    }
-  }
-  else
-  {
-    // Set flag to process the frame
-    status_packet_recieved = true;
-  }
+  // If complete string not already recieved
+  if (incomming_string_index < INCOMMING_BUFFER_SIZE && !(incomming_character == ASCII_CR || incomming_character == ASCII_LF))
+	{
+		// If incomming character is recieved
+		if (incomming_character != -1)
+		{
+			// Check if character is valid and append to the incomming string buffer
+			if ((incomming_character >= (int8_t)'@' && incomming_character <= (int8_t)'O') || incomming_character == ASCII_CR || incomming_character == ASCII_LF)
+			{
+				// Append character to incomming string
+				incomming_string[incomming_string_index] = (char)incomming_character;
+				incomming_string_index++;
+			}
+		}
+	}
+	else
+	{
+		// Set flag to process the frame
+		status_packet_recieved = true;
+		incomming_string_index = 0;
+	}
 }
 
 /**
