@@ -3,7 +3,7 @@
 *			STM32F439 Main								  			*
 *			Developed for the STM32								*
 *			Startup Author: Dr. Glenn Matthews		*
-*			Project Authors: Samuel Griffiths 		*
+*			Project Author: Samuel Griffiths 			*
 *			Source File														*
 ********************************************/
 
