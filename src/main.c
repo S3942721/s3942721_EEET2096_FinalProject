@@ -4,7 +4,6 @@
 *			Developed for the STM32								*
 *			Startup Author: Dr. Glenn Matthews		*
 *			Project Authors: Samuel Griffiths 		*
-* 										 Cameron Lindsay			*
 *			Source File														*
 ********************************************/
 
@@ -41,8 +40,11 @@
 #define ASCII_LF 0x0A
 #define ASCII_AT 0x40
 
-#define HEAT_ON_TEMP 22.5 // Temperature to turn on heating
-#define COOL_ON_TEMP 23.5 // Temperature to turn on cooling
+#define HEAT_ON_TEMP 22.5f // Temperature to turn on heating
+#define COOL_ON_TEMP 23.5f // Temperature to turn on cooling
+
+#define AUTO_CONTROL_MIN 16.0f
+#define AUTO_CONTROL_MAX 25.0f
 
 /*
   Methids/Functions/Subroutines we need:
@@ -353,10 +355,10 @@ int main(void)
       // Handle USART control (Assuming inputs are valid and not expired)
       
       // If the temperature is between 16℃ and 25℃ then accept USART control
-      if (temperature_output >= 16.0 && temperature_output <= 25.0)
+      if (get_temperature() >= AUTO_CONTROL_MIN && get_temperature() <= AUTO_CONTROL_MAX)
       {
         // If cooling and heating are mutually exclusive then set output to input
-        if !(cooling_input && heating_input) {
+        if (!(cooling_input && heating_input)) {
           // If both cooling and heating are given then ignore input
           // If only one is set then set output to input
           cooling_output = cooling_input;
@@ -697,7 +699,7 @@ void configure_TIM7(void)
  * 
  * This function enables the RCC for Timer 6, Timer 7, and USART3, and enables the GPIOs for GPIOA, GPIOB, and GPIOF.
  */
-void configure_RCC(void) //Cam + Sam (Minor fixes and documentation)
+void configure_RCC(void)
 {
   // Enable RCC for Timer 6, Timer 7, and USART3
 	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN | RCC_APB1ENR_TIM7EN | RCC_APB1ENR_USART3EN;						// Enable RCC for Timer 6, Timer 7, and USART3
@@ -719,7 +721,7 @@ void configure_RCC(void) //Cam + Sam (Minor fixes and documentation)
 /**
  * @brief Configures the GPIOs (General Purpose Input/Output) for system initialization.
  */
-void configure_GPIOs(void) //Cam
+void configure_GPIOs(void)
 {
 	configure_GPIOA();
 	configure_GPIOB();
@@ -735,7 +737,7 @@ void configure_GPIOs(void) //Cam
  * GPIOA10 - Light Intensity Sensor (SW4)
  * 
  */
-void configure_GPIOA(void) //Cam (Sam - Bug fixes and documentation/formatting)
+void configure_GPIOA(void)
 {
 	// Configure:
 	// LED0: PA3 	(Output, Clear Floating Values, Active Low)
@@ -787,7 +789,7 @@ void configure_GPIOA(void) //Cam (Sam - Bug fixes and documentation/formatting)
  * GPIOB11 - UART3 Receive
  * 
  */
-void configure_GPIOB(void) //Cam (Sam - Bug fixes, added functionality and documentation/formatting)
+void configure_GPIOB(void)
 {
   // Configure:
   // SW6: PB1 	(Input, Clear Floating Values, Active Low)
@@ -947,12 +949,12 @@ void set_cooling(bool on)
   // Cooling is on PF8
   if (on)
   {
-    GPIOF->ODR |= GPIO_ODR_OD8;
+    GPIOF->ODR &= ~GPIO_ODR_OD8;
   } 
   // Cooling is off
   else 
   {
-    GPIOF->ODR &= ~GPIO_ODR_OD8;
+		GPIOF->ODR |= GPIO_ODR_OD8;
   }
 }
 
@@ -966,12 +968,12 @@ void set_heating(bool on)
   // Heater is on PB8
   if (on)
   {
-    GPIOB->ODR |= GPIO_ODR_OD8;
+    GPIOB->ODR &= ~GPIO_ODR_OD8;
   } 
   // Heater is off
   else 
   {
-    GPIOB->ODR &= ~GPIO_ODR_OD8;
+		GPIOB->ODR |= GPIO_ODR_OD8;
   }
 }
 
@@ -985,12 +987,12 @@ void set_fan(bool on)
   // Fan is on PB1
   if (on)
   {
-    GPIOA->ODR |= GPIO_ODR_OD8;
+		GPIOB->ODR &= ~GPIO_ODR_OD1;
   } 
   // Fan is off
   else 
   {
-    GPIOA->ODR &= ~GPIO_ODR_OD8;
+    GPIOB->ODR |= GPIO_ODR_OD1;
   }
 }
 
@@ -1004,12 +1006,12 @@ void set_light(bool on)
   // Light is on PA3
   if (on)
   {
-    GPIOA->ODR |= GPIO_ODR_OD3;
+    GPIOA->ODR &= ~GPIO_ODR_OD3;
   } 
   // Light is off
   else 
   {
-    GPIOA->ODR &= ~GPIO_ODR_OD3;
+		GPIOA->ODR |= GPIO_ODR_OD3;
   }
 }
 
@@ -1216,6 +1218,7 @@ bool USART_control_timer_expired(void)
   {
     usart_control = false;
     usart_control_timer_count = 0;
+		
     return true;
   }
   return false;
@@ -1348,7 +1351,7 @@ bool handle_fan(void)
     }
   }
   // If fan switch was hit
-  else if (fan_input)
+  else if (fan_switch)
   {
     // If fan already on then turn off and start 20s timer
     if (fan_output)
@@ -1378,7 +1381,7 @@ bool handle_fan(void)
  * 
  * @return The updated light state.
  */
-bool handle_light(void) //Cam (Sam - fix bug in function and add functionality)
+bool handle_light(void)
 {
   // If Light switch was confirmed to be hit (With 50ms debounce)
   if (light_switch)
