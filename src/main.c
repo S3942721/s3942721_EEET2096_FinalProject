@@ -22,6 +22,9 @@
 #define TIM6_RATE CPU_CLOCK/(TIM6_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 #define TIM7_RATE CPU_CLOCK/(TIM7_PRESCALER + 1) // 84MHz bus clock divided by prescaler gets the number of timer ticks per second, +1 Accounts for hardware adding 1 for prescaler
 
+#define USART_CONTROL_TIMEOUT 15 // 15s timeout for USART control
+#define FAN_TIMER_TIMEOUT 20 // 20s timeout for fan
+
 #define USART_TIMEOUT 1000 // timeout for USART
 #define ADC_CONVERSION_TIMEOUT 1000 // timeout for ADC conversion
 #define DEFAULT_TIMEOUT 2 // 2s timeout for general use
@@ -38,7 +41,8 @@
 #define ASCII_LF 0x0A
 #define ASCII_AT 0x40
 
-#define TEMP_DIFF_MIN 0.1 // Minimum temperature difference to stop auto heating or cooling when usart control is active
+#define HEAT_ON_TEMP 22.5 // Temperature to turn on heating
+#define COOL_ON_TEMP 23.5 // Temperature to turn on cooling
 
 /*
   Methids/Functions/Subroutines we need:
@@ -187,9 +191,11 @@ bool TIM6_expired(void);
 bool TIM7_expired(void);
 void wait_For_TIM6(void);
 void wait_For_TIM7(void);
+bool USART_control_timer_expired(void);
+bool fan_timer_expired(void);
 
 // Handle inputs and outputs methods
-void handle_cooling_and_heating(void);
+void handle_auto_thermostat(void);
 bool handle_fan(void);
 bool handle_light(void);
 void handle_outputs(void);
@@ -211,8 +217,8 @@ static volatile bool light_input;
 
 static volatile bool fan_timer_active;
 static volatile int fan_timer_count = 0; // Time count for 20s fan off timer
-static volatile bool heating_cooling_manual_override_timer_active;
-static volatile int manual_override_count;
+static volatile bool usart_control;
+static volatile int usart_control_timer_count;
 
 static volatile bool debounce_timer_active;
 
@@ -284,7 +290,7 @@ int main(void)
   status_packet_recieved = false;
   debounce_timer_active = false;
   fan_timer_active = false;
-  heating_cooling_manual_override_timer_active = false;
+  usart_control = false;
 	
 	// DEBUG
 	//USART3->DR = 0x40;
@@ -316,9 +322,9 @@ int main(void)
         fan_timer_count++;
       }
 			
-			if (heating_cooling_manual_override_timer_active)
+			if (usart_control)
 			{
-				manual_override_count++;
+				usart_control_timer_count++;
 			}
     }
 
@@ -339,15 +345,58 @@ int main(void)
       incomming_string[0] = '\0';
       incomming_string_index = 0;
 			
-			heating_cooling_manual_override_timer_active = true;
+			usart_control = true;
     }
+
+    // If USART control is active and not expired then handle inputs
+    if (usart_control && !USART_control_timer_expired()) {
+      // Handle USART control (Assuming inputs are valid and not expired)
+      
+      // If the temperature is between 16℃ and 25℃ then accept USART control
+      if (temperature_output >= 16.0 && temperature_output <= 25.0)
+      {
+        // If cooling and heating are mutually exclusive then set output to input
+        if !(cooling_input && heating_input) {
+          // If both cooling and heating are given then ignore input
+          // If only one is set then set output to input
+          cooling_output = cooling_input;
+          heating_output = heating_input;
+        }
+      } 
+      else {
+        handle_auto_thermostat();
+      }
+
+      // Set fan and light outputs to input (regardless of temp range)
+      fan_output = fan_input;
+      light_output = light_input;
+    } 
+    // Follow complete local control (including user switches) if USART control is not active
+    else {
+      // Read Switches
+      light_switch = get_light_switch();
+      fan_switch = get_fan_switch();
+      fan_output = handle_fan();
+      light_output = handle_light();
+
+      // Handle thermostat based on temperature
+      handle_auto_thermostat();
+
+      temperature_output = get_temperature();
+    }
+
+
+
+
+
+
 
     // Read Switches
     light_switch = get_light_switch();
     fan_switch = get_fan_switch();
 
     // Handle inputs
-    handle_cooling_and_heating();
+    handle_auto_thermostat();
     fan_output = handle_fan();
     light_output = handle_light();
     temperature_output = get_temperature();
@@ -1176,6 +1225,18 @@ bool TIM7_expired(void)
   return expired;
 }
 
+bool USART_control_timer_expired(void)
+{
+  // Return if the timer is > 15s and clear USART 
+  if (usart_control_timer_count >= USART_CONTROL_TIMEOUT)
+  {
+    usart_control = false;
+    usart_control_timer_count = 0;
+    return true;
+  }
+  return false;
+}
+
 /**
  * @brief Waits for TIM6 to expire.
  * 
@@ -1245,16 +1306,6 @@ void start_TIM7(uint16_t count)
 }
 
 /**
- * Checks if the temperature has changed a bit.
- * 
- * @return true if the temperature has changed, false otherwise.
- */
-bool temperature_changed() 
-{
-  return (get_temperature() - temperature_input) > TEMP_DIFF_MIN || (temperature_input - get_temperature()) > TEMP_DIFF_MIN;
-}
-
-/**
  * @brief Handles the cooling/heating logic.
  * 
  * This function checks the cooling input and updates the cooling and heating outputs accordingly.
@@ -1262,71 +1313,26 @@ bool temperature_changed()
  * 
  * @return The current value of the cooling output.
  */
-void handle_cooling_and_heating(void)
+void handle_auto_thermostat(void)
 {
-  // Via the UART, the heating / cooling can be turned on or off, however, it will
-  // consider the current temperature. If the temperature is between 16℃ and 25℃, then the
-  // command to turn on / off the heating / cooling / fan will be accepted for 15 seconds and
-  // then the automatic control (as indicated in Section 3c) will resume. If the temperature
-  // range is above 25℃ or below 16℃, the UART command to control the heater / cooling
-  // and fan will be ignored. Should the temperature value change during the 15 second
-  // UART control (heating_cooling_manual_override_timer_active), the automatic control should not resume.
-
-  // Handle cooling logic based on the cooling input and temperature
-  // If override timer is active and expired and temperature has changed, reset timer and resume automatic control
-  if ((heating_cooling_manual_override_timer_active && manual_override_count >= 15) || (heating_cooling_manual_override_timer_active && temperature_changed()))
+  // Set the heating and cooling based on the temperature based on HEAT_ON_TEMP and COOL_ON_TEMP
+  // If the temperature is above COOL_ON_TEMP then turn on cooling and turn off heating
+  // If the temperature is below HEAT_ON_TEMP then turn on heating and turn off cooling
+  // If the temperature is between HEAT_ON_TEMP and COOL_ON_TEMP then turn off both heating and cooling
+  if (get_temperature() > COOL_ON_TEMP)
   {
-    // If manual override timer has expired, reset timer and resume automatic control
-    heating_cooling_manual_override_timer_active = false;
-    manual_override_count = 0;
-  }
-
-  if (temperature_input >= 25.0f && !heating_cooling_manual_override_timer_active)
-  {
-    // If temperature is above 25 degrees, turn off cooling and turn on heating
-    cooling_output = false;
-    heating_output = true;
-  }
-  else if (temperature_input <= 16.0f)
-  {
-    // If temperature is below 16 degrees, turn on cooling and turn off heating
     cooling_output = true;
     heating_output = false;
   }
-  // If temperature is between 16 and 25 degrees and manual override timer is active and not expired
-  else if (heating_cooling_manual_override_timer_active && manual_override_count < 15)
+  else if (get_temperature() < HEAT_ON_TEMP)
   {
-    // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
-    if (cooling_input)
-    {
-      cooling_output = !cooling_output;
-      heating_output = !cooling_output;
-    }
-    if (heating_input)
-    {
-      heating_output = !heating_output;
-      cooling_output = !heating_output;
-    }
+    cooling_output = false;
+    heating_output = true;
   }
   else
   {
-    // If temperature is between 16 and 25 degrees, handle cooling and heating inputs and update outputs
-    if (cooling_input)
-    {
-      cooling_output = !cooling_output;
-      heating_output = !cooling_output;
-      // If cooling input is hit, start 15s timer
-      heating_cooling_manual_override_timer_active = true;
-      manual_override_count = 0;
-    }
-    if (heating_input)
-    {
-      heating_output = !heating_output;
-      cooling_output = !heating_output;
-      // If heating input is hit, start 15s timer
-      heating_cooling_manual_override_timer_active = true;
-      manual_override_count = 0;
-    }
+    cooling_output = false;
+    heating_output = false;
   }
 }
 
@@ -1344,7 +1350,7 @@ bool handle_fan(void)
   if (fan_timer_active)
   {
     // If 20s has passed then turn fan back on
-    if (fan_timer_count >= 20)
+    if (fan_timer_count >= FAN_TIMER_TIMEOUT)
     {
       // Turn fan back on
       fan_timer_active = false;
