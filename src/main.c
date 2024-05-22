@@ -381,24 +381,8 @@ int main(void)
 
       // Handle thermostat based on temperature
       handle_auto_thermostat();
-
-      temperature_output = get_temperature();
     }
 
-
-
-
-
-
-
-    // Read Switches
-    light_switch = get_light_switch();
-    fan_switch = get_fan_switch();
-
-    // Handle inputs
-    handle_auto_thermostat();
-    fan_output = handle_fan();
-    light_output = handle_light();
     temperature_output = get_temperature();
 		
 		// Set header character
