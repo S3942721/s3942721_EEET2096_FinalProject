@@ -43,8 +43,8 @@
 #define HEAT_ON_TEMP 22.5f // Temperature to turn on heating
 #define COOL_ON_TEMP 23.5f // Temperature to turn on cooling
 
-#define AUTO_CONTROL_MIN 16.0f
-#define AUTO_CONTROL_MAX 25.0f
+#define AUTO_CONTROL_MIN 16.0f // Temperature min to accept USART control
+#define AUTO_CONTROL_MAX 25.0f // Temperature min to accept USART control
 
 /*
   Methids/Functions/Subroutines we need:
@@ -222,8 +222,6 @@ static volatile int fan_timer_count = 0; // Time count for 20s fan off timer
 static volatile bool usart_control;
 static volatile int usart_control_timer_count;
 
-static volatile bool debounce_timer_active;
-
 static volatile bool light_intensity_sensor;
 static volatile bool fan_switch;
 static volatile bool light_switch;
@@ -290,7 +288,6 @@ int main(void)
   incomming_string_index = 0;
 
   status_packet_recieved = false;
-  debounce_timer_active = false;
   fan_timer_active = false;
   usart_control = false;
 	
@@ -1218,7 +1215,7 @@ bool USART_control_timer_expired(void)
   {
     usart_control = false;
     usart_control_timer_count = 0;
-		
+		fan_output = false;
     return true;
   }
   return false;
@@ -1339,36 +1336,28 @@ bool handle_fan(void)
     // If 20s has passed then turn fan back on
     if (fan_timer_count >= FAN_TIMER_TIMEOUT)
     {
-      // Turn fan back on
+      // Turn fan off
       fan_timer_active = false;
       fan_timer_count = 0;
-      return true;
+      return false;
     }
-    // If 20s has not passed then keep fan off
+    // If 20s has not passed then keep fan on
     else
     {
-      return false;
+      return true;
     }
   }
   // If fan switch was hit
   else if (fan_switch)
   {
-    // If fan already on then turn off and start 20s timer
-    if (fan_output)
-    {
-      fan_timer_active = true;
-      return false;
-    }
-    // If fan off then turn on
-    else
-    {
-      return true;
-    }
+		fan_timer_active = true;
+		fan_timer_count = 0;
+		return false;
   }
   // If fan switch not hit and timeout not running then return previous value
   else
   {
-    return fan_output;
+    return true;
   }
 }
 
