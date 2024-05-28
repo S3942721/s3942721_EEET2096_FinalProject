@@ -211,43 +211,57 @@ int main(void)
           heating_input = incomming_string[1] & 0x4; // Clear all but 5th bit
           fan_input = incomming_string[1] & 0x2;     // Clear all but 6th bit
           light_input = incomming_string[1] & 0x1;   // Clear all but 7th bit
-
-          // Reset status packet flag and clear current status string
-          status_packet_recieved = false;
-          incomming_string[0] = '\0';
-          incomming_string_index = 0;
-
-          usart_control = true;
-        }
-      }
+					incomming_string[0] = '\0';
+					incomming_string_index = 0;
+					
+					usart_control = true;
+				}
+			}
     }
 
     // If USART control is active and not expired then handle inputs
-    if (usart_control && !USART_control_timer_expired())
-    {
-      // Handle USART control (Assuming inputs are valid and not expired)
-
-      // If the temperature is between 16℃ and 25℃ then accept USART control
-      if (get_temperature() >= AUTO_CONTROL_MIN && get_temperature() <= AUTO_CONTROL_MAX)
-      {
-        // Set fan output to input
-        fan_output = fan_input;
-
-        // If cooling and heating are mutually exclusive then set output to input
-        if (!(cooling_input && heating_input))
-        {
-          // If both cooling and heating are given then ignore input
-          // If only one is set then set output to input
-          cooling_output = cooling_input;
-          heating_output = heating_input;
-        }
-        else
-        {
-          handle_auto_thermostat();
-        }
+    if (usart_control && !USART_control_timer_expired()) {
+      // Handle USART control
+	
+			// If we just recieved the command, set outputs accordingly
+			if (status_packet_recieved)
+			{
+				// If the temperature is valid then accept USART command
+				if (get_temperature() >= AUTO_CONTROL_MIN && get_temperature() <= AUTO_CONTROL_MAX)
+				{
+					// If cooling and heating are mutually exclusive then set output to input
+					if (!(cooling_input && heating_input)) {
+						// If both cooling and heating are given then ignore input
+						// If only one is set then set output to input
+						cooling_output = cooling_input;
+						heating_output = heating_input;
+					}
+					else {
+						// cooling and heating set, cancel and ignore input
+						handle_auto_thermostat();
+						usart_control = false;
+					}
+				}
+				// If temperature is out of range (and we just recieved the input)
+				else
+				{
+					// Cancel and ignore input 
+					handle_auto_thermostat();
+					usart_control = false;
+				}
+				// Set fan output to input
+				fan_output = fan_input;
       }
-      // Set light output to input (regardless of temp range)
-      light_output = light_input;
+			// If we have an existing command, keep going
+			else {
+				// Nothing changes
+			}
+			// Set light output to input (regardless of temp range)
+			light_output = light_input;
+
+			// Reset status packet flag and clear current status string
+			status_packet_recieved = false;
+
     }
     // Follow complete local control (including user switches) if USART control is not active
     else
